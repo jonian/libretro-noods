@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef GPU_H
-#define GPU_H
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -31,65 +30,62 @@
 
 class Core;
 
-class Gpu
-{
-    public:
-        Gpu(Core *core);
-        ~Gpu();
+class Gpu {
+public:
+    Gpu(Core *core);
+    ~Gpu();
 
-        void saveState(MemFile &file);
-        void loadState(MemFile &file);
+    void saveState(MemFile &file);
+    void loadState(MemFile &file);
 
-        bool getFrame(uint32_t *out, bool gbaCrop);
-        void invalidate3D() { dirty3D |= BIT(0); }
+    bool getFrame(uint32_t *out, bool gbaCrop);
+    void invalidate3D() { dirty3D |= BIT(0); }
 
-        void gbaScanline240();
-        void gbaScanline308();
-        void scanline256();
-        void scanline355();
+    void gbaScanline240();
+    void gbaScanline308();
+    void scanline256();
+    void scanline355();
 
-        uint16_t readDispStat(bool cpu) { return dispStat[cpu]; }
-        uint16_t readVCount()           { return vCount;        }
-        uint32_t readDispCapCnt()       { return dispCapCnt;    }
-        uint16_t readPowCnt1()          { return powCnt1;       }
+    uint16_t readDispStat(bool cpu) { return dispStat[cpu]; }
+    uint16_t readVCount() { return vCount; }
+    uint32_t readDispCapCnt() { return dispCapCnt; }
+    uint16_t readPowCnt1() { return powCnt1; }
 
-        void writeDispStat(bool cpu, uint16_t mask, uint16_t value);
-        void writeDispCapCnt(uint32_t mask, uint32_t value);
-        void writePowCnt1(uint16_t mask, uint16_t value);
+    void writeDispStat(bool cpu, uint16_t mask, uint16_t value);
+    void writeDispCapCnt(uint32_t mask, uint32_t value);
+    void writePowCnt1(uint16_t mask, uint16_t value);
 
-    private:
-        Core *core;
+private:
+    Core *core;
 
-        struct Buffers
-        {
-            uint32_t *framebuffer = nullptr;
-            uint32_t *hiRes3D = nullptr;
-            bool top3D = false;
-        };
+    struct Buffers {
+        uint32_t *framebuffer = nullptr;
+        uint32_t *hiRes3D = nullptr;
+        bool top3D = false;
+    };
 
-        std::queue<Buffers> framebuffers;
-        std::atomic<bool> ready;
-        std::mutex mutex;
+    std::queue<Buffers> framebuffers;
+    std::atomic<bool> ready;
+    std::mutex mutex;
 
-        bool running = false;
-        std::atomic<int> drawing;
-        std::thread *thread = nullptr;
+    std::atomic<bool> running;
+    std::atomic<int> drawing;
+    std::thread *thread = nullptr;
 
-        bool gbaBlock = true;
-        bool displayCapture = false;
-        uint8_t dirty3D = 0;
+    int frames = 0;
+    bool gbaBlock = true;
+    bool displayCapture = false;
+    uint8_t dirty3D = 0;
 
-        uint16_t dispStat[2] = {};
-        uint16_t vCount = 0;
-        uint32_t dispCapCnt = 0;
-        uint16_t powCnt1 = 0;
+    uint16_t dispStat[2] = {};
+    uint16_t vCount = 0;
+    uint32_t dispCapCnt = 0;
+    uint16_t powCnt1 = 0;
 
-        static uint32_t rgb5ToRgb8(uint32_t color);
-        static uint32_t rgb6ToRgb8(uint32_t color);
-        static uint16_t rgb6ToRgb5(uint32_t color);
+    static uint32_t rgb5ToRgb8(uint32_t color);
+    static uint32_t rgb6ToRgb8(uint32_t color);
+    static uint16_t rgb6ToRgb5(uint32_t color);
 
-        void drawGbaThreaded();
-        void drawThreaded();
+    void drawGbaThreaded();
+    void drawThreaded();
 };
-
-#endif // GPU_H

@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -18,22 +18,17 @@
 */
 
 #include <cstring>
-
-#include "spi.h"
 #include "core.h"
-#include "settings.h"
 
 Language Spi::language = LG_ENGLISH;
 
-Spi::~Spi()
-{
+Spi::~Spi() {
     // Free any dynamic memory
-    if (firmware)  delete[] firmware;
+    if (firmware) delete[] firmware;
     if (micBuffer) delete[] micBuffer;
 }
 
-void Spi::saveState(MemFile &file)
-{
+void Spi::saveState(MemFile &file) {
     // Write state data to the file
     fwrite(&writeCount, sizeof(writeCount), 1, file);
     fwrite(&address, sizeof(address), 1, file);
@@ -42,8 +37,7 @@ void Spi::saveState(MemFile &file)
     fwrite(&spiData, sizeof(spiData), 1, file);
 }
 
-void Spi::loadState(MemFile &file)
-{
+void Spi::loadState(MemFile &file) {
     // Read state data from the file
     fread(&writeCount, sizeof(writeCount), 1, file);
     fread(&address, sizeof(address), 1, file);
@@ -52,13 +46,11 @@ void Spi::loadState(MemFile &file)
     fread(&spiData, sizeof(spiData), 1, file);
 }
 
-uint16_t Spi::crc16(uint32_t value, uint8_t *data, size_t size)
-{
+uint16_t Spi::crc16(uint32_t value, uint8_t *data, size_t size) {
     static const uint16_t table[] = { 0xC0C1, 0xC181, 0xC301, 0xC601, 0xCC01, 0xD801, 0xF001, 0xA001 };
 
     // Calculate a CRC16 value for the given data
-    for (size_t i = 0; i < size; i++)
-    {
+    for (size_t i = 0; i < size; i++) {
         value ^= data[i];
         for (size_t j = 0; j < 8; j++)
             value = (value >> 1) ^ ((value & 1) ? (table[j] << (7 - j)) : 0);
@@ -67,15 +59,13 @@ uint16_t Spi::crc16(uint32_t value, uint8_t *data, size_t size)
     return value;
 }
 
-bool Spi::loadFirmware()
-{
+bool Spi::loadFirmware() {
     // Ensure firmware memory isn't already allocated
     if (firmware)
         delete[] firmware;
 
     // Load the firmware from a file if it exists
-    if (FILE *file = fopen(Settings::firmwarePath.c_str(), "rb"))
-    {
+    if (FILE *file = fopen(Settings::firmwarePath.c_str(), "rb")) {
         fseek(file, 0, SEEK_END);
         firmSize = ftell(file);
         fseek(file, 0, SEEK_SET);
@@ -83,8 +73,7 @@ bool Spi::loadFirmware()
         fread(firmware, sizeof(uint8_t), firmSize, file);
         fclose(file);
 
-        if (core->id > 0)
-        {
+        if (core->id > 0) {
             // Increment the MAC address based on the instance ID
             // This allows instances to be detected as separate systems
             firmware[0x3B] += core->id;
@@ -125,8 +114,7 @@ bool Spi::loadFirmware()
     firmware[0x2B] = crc >> 8;
 
     // Configure the WiFi access points
-    for (uint32_t addr = 0x1FA00; addr <= 0x1FC00; addr += 0x100)
-    {
+    for (uint32_t addr = 0x1FA00; addr <= 0x1FC00; addr += 0x100) {
         // Set some access point data
         firmware[addr + 0xE7] = 0xFF; // Not configured
         firmware[addr + 0xF5] = 0x28; // Unknown
@@ -138,19 +126,18 @@ bool Spi::loadFirmware()
     }
 
     // Configure the user settings
-    for (uint32_t addr = 0x1FE00; addr <= 0x1FF00; addr += 0x100)
-    {
+    for (uint32_t addr = 0x1FE00; addr <= 0x1FF00; addr += 0x100) {
         // Set some user settings data
-        firmware[addr + 0x00] =  5;  // Version
-        firmware[addr + 0x02] =  2;  // Favorite color
-        firmware[addr + 0x03] =  5;  // Birthday month
-        firmware[addr + 0x04] = 25;  // Birthday day
+        firmware[addr + 0x00] = 5; // Version
+        firmware[addr + 0x02] = 2; // Favorite color
+        firmware[addr + 0x03] = 5; // Birthday month
+        firmware[addr + 0x04] = 25; // Birthday day
         firmware[addr + 0x06] = 'N'; // Nickname, char 1
         firmware[addr + 0x08] = 'o'; // Nickname, char 2
         firmware[addr + 0x0A] = 'o'; // Nickname, char 3
         firmware[addr + 0x0C] = 'D'; // Nickname, char 4
         firmware[addr + 0x0E] = 'S'; // Nickname, char 5
-        firmware[addr + 0x1A] =  5;  // Nickname length
+        firmware[addr + 0x1A] = 5; // Nickname length
 
         // Set the touch calibration data
         firmware[addr + 0x5E] = 0xF0; // ADC X2, byte 1
@@ -172,27 +159,26 @@ bool Spi::loadFirmware()
     return false;
 }
 
-void Spi::directBoot()
-{
-    // Load the user settings into memory
+void Spi::directBoot() {
+    // Load the user settings into memory based on DSi mode
+    uint32_t address = 0x27FFC80 + (Settings::dsiMode << 23);
     for (uint32_t i = 0; i < 0x70; i++)
-        core->memory.write<uint8_t>(0, 0x27FFC80 + i, firmware[firmSize - 0x100 + i]);
+        core->memory.write<uint8_t>(0, address + i, firmware[firmSize - 0x100 + i]);
 }
 
-void Spi::setTouch(int x, int y)
-{
+void Spi::setTouch(int x, int y) {
     if (!firmware)
         return;
 
     // Read calibration points from the firmware
     uint16_t adcX1 = U8TO16(firmware, firmSize - 0xA8);
     uint16_t adcY1 = U8TO16(firmware, firmSize - 0xA6);
-    uint8_t  scrX1 = firmware[firmSize - 0xA4];
-    uint8_t  scrY1 = firmware[firmSize - 0xA3];
+    uint8_t scrX1 = firmware[firmSize - 0xA4];
+    uint8_t scrY1 = firmware[firmSize - 0xA3];
     uint16_t adcX2 = U8TO16(firmware, firmSize - 0xA2);
     uint16_t adcY2 = U8TO16(firmware, firmSize - 0xA0);
-    uint8_t  scrX2 = firmware[firmSize - 0x9E];
-    uint8_t  scrY2 = firmware[firmSize - 0x9D];
+    uint8_t scrX2 = firmware[firmSize - 0x9E];
+    uint8_t scrY2 = firmware[firmSize - 0x9D];
 
     // Ensure the coordinates are within bounds
     // A one pixel border around the screen is ignored to avoid potential underflow/overflow
@@ -205,15 +191,13 @@ void Spi::setTouch(int x, int y)
     if (scrY2 - scrY1 != 0) touchY = (y - (scrY1 - 1)) * (adcY2 - adcY1) / (scrY2 - scrY1) + adcY1;
 }
 
-void Spi::clearTouch()
-{
+void Spi::clearTouch() {
     // Set the ADC values to their default state
     touchX = 0x000;
     touchY = 0xFFF;
 }
 
-void Spi::sendMicData(const int16_t* samples, size_t count, size_t rate)
-{
+void Spi::sendMicData(const int16_t* samples, size_t count, size_t rate) {
     mutex.lock();
 
     // Copy samples into the microphone buffer
@@ -229,107 +213,92 @@ void Spi::sendMicData(const int16_t* samples, size_t count, size_t rate)
     mutex.unlock();
 }
 
-void Spi::writeSpiCnt(uint16_t mask, uint16_t value)
-{
+void Spi::writeSpiCnt(uint16_t mask, uint16_t value) {
     // Write to the SPICNT register
     mask &= 0xCF03;
     spiCnt = (spiCnt & ~mask) | (value & mask);
 }
 
-void Spi::writeSpiData(uint8_t value)
-{
+void Spi::writeSpiData(uint8_t value) {
     // Don't do anything if the SPI isn't enabled
-    if (!(spiCnt & BIT(15)))
-    {
+    if (!(spiCnt & BIT(15))) {
         spiData = 0;
         return;
     }
 
-    if (writeCount == 0)
-    {
+    if (writeCount == 0) {
         // On the first write, set the command byte
         command = value;
         address = 0;
         spiData = 0;
     }
-    else
-    {
-        switch ((spiCnt & 0x0300) >> 8) // Device
-        {
-            case 1: // Firmware
-            {
-                switch (command)
-                {
-                    case 0x03: // Read data bytes
-                        if (writeCount < 4)
-                        {
-                            // On writes 2-4, set the 3 byte address to read from
-                            address |= value << ((3 - writeCount) * 8);
-                        }
-                        else
-                        {
-                            // On writes 5+, read data from the firmware and send it back
-                            spiData = (address < firmSize) ? firmware[address] : 0;
+    else {
+        switch ((spiCnt & 0x0300) >> 8) { // Device
+        case 1: // Firmware
+            switch (command) {
+            case 0x03: // Read data bytes
+                if (writeCount < 4) {
+                    // On writes 2-4, set the 3 byte address to read from
+                    address |= value << ((3 - writeCount) * 8);
+                }
+                else {
+                    // On writes 5+, read data from the firmware and send it back
+                    spiData = (address < firmSize) ? firmware[address] : 0;
 
-                            // Increment the address
-                            // 16-bit mode is bugged; the address is incremented accordingly, but only the lower 8 bits are sent
-                            address += (spiCnt & BIT(10)) ? 2 : 1;
-                        }
-                        break;
-
-                    default:
-                        LOG("Write to SPI with unknown firmware command: 0x%X\n", command);
-                        spiData = 0;
-                        break;
+                    // Increment the address
+                    // 16-bit mode is bugged; the address is incremented accordingly, but only the lower 8 bits are sent
+                    address += (spiCnt & BIT(10)) ? 2 : 1;
                 }
                 break;
-            }
-
-            case 2: // Touchscreen
-            {
-                switch ((command & 0x70) >> 4) // Channel
-                {
-                    case 1: // Y-coordinate
-                        // Send the ADC Y coordinate MSB first, with 3 dummy bits in front
-                        spiData = (writeCount & 1) ? (touchY >> 5) : (touchY << 3);
-                        break;
-
-                    case 5: // X-coordinate
-                        // Send the ADC X coordinate MSB first, with 3 dummy bits in front
-                        spiData = (writeCount & 1) ? (touchX >> 5) : (touchX << 3);
-                        break;
-
-                    case 6: // AUX input
-                        if (writeCount & 1)
-                        {
-                            // Load a sample based on cycle time since the buffer was sent
-                            // The sample is converted to an unsigned 12-bit value
-                            mutex.lock();
-                            size_t index = std::min<size_t>((core->globalCycles - micCycles) / micStep, micBufSize);
-                            micSample = (micBufSize > 0) ? ((micBuffer[index] >> 4) + 0x800) : 0;
-                            mutex.unlock();
-
-                            // Send the most significant 7 bits of the sample first
-                            spiData = micSample >> 5;
-                            break;
-                        }
-
-                        // Send the last 5 bits of the sample. with 3 dummy bits in front
-                        spiData = micSample << 3;
-                        break;
-
-                    default:
-                        LOG("Write to SPI with unknown touchscreen channel: %d\n", (command & 0x70) >> 4);
-                        spiData = 0;
-                        break;
-                }
-                break;
-            }
 
             default:
-                LOG("Write to SPI with unknown device: %d\n", (spiCnt & 0x0300) >> 8);
+                LOG_CRIT("Write to SPI with unknown firmware command: 0x%X\n", command);
                 spiData = 0;
                 break;
+            }
+            break;
+
+        case 2: // Touchscreen
+            switch ((command & 0x70) >> 4) { // Channel
+            case 1: // Y-coordinate
+                // Send the ADC Y coordinate MSB first, with 3 dummy bits in front
+                spiData = (writeCount & 1) ? (touchY >> 5) : (touchY << 3);
+                break;
+
+            case 5: // X-coordinate
+                // Send the ADC X coordinate MSB first, with 3 dummy bits in front
+                spiData = (writeCount & 1) ? (touchX >> 5) : (touchX << 3);
+                break;
+
+            case 6: // AUX input
+                if (writeCount & 1) {
+                    // Load a sample based on cycle time since the buffer was sent
+                    // The sample is converted to an unsigned 12-bit value
+                    mutex.lock();
+                    size_t index = std::min<size_t>((core->globalCycles - micCycles) / micStep, micBufSize);
+                    micSample = (micBufSize > 0) ? ((micBuffer[index] >> 4) + 0x800) : 0;
+                    mutex.unlock();
+
+                    // Send the most significant 7 bits of the sample first
+                    spiData = micSample >> 5;
+                    break;
+                }
+
+                // Send the last 5 bits of the sample. with 3 dummy bits in front
+                spiData = micSample << 3;
+                break;
+
+            default:
+                LOG_WARN("Write to SPI with unknown touchscreen channel: %d\n", (command & 0x70) >> 4);
+                spiData = 0;
+                break;
+            }
+            break;
+
+        default:
+            LOG_CRIT("Write to SPI with unknown device: %d\n", (spiCnt & 0x0300) >> 8);
+            spiData = 0;
+            break;
         }
     }
 

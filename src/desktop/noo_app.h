@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,49 +17,44 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef NOO_APP_H
-#define NOO_APP_H
+#pragma once
 
 #include <portaudio.h>
 #include <wx/wx.h>
 
 #define MAX_FRAMES 8
-#define MAX_KEYS  17
+#define MAX_KEYS 17
 
 class NooFrame;
 
-class NooApp: public wxApp
-{
-    public:
-        static int micEnable;
-        static int splitScreens;
-        static int keyBinds[MAX_KEYS];
+class NooApp: public wxApp {
+public:
+    static int micEnable;
+    static int splitScreens;
+    static int keyBinds[MAX_KEYS];
 
-        void createFrame();
-        void removeFrame(int id);
+    void createFrame();
+    void removeFrame(int id);
 
-        void connectCore(int id);
-        void disconnCore(int id);
+    void connectCore(int id);
+    void disconnCore(int id);
 
-        void updateLayouts();
-        void startStream(bool stream);
-        void stopStream(bool stream);
+    void updateLayouts();
+    void startStream(bool stream);
+    void stopStream(bool stream);
 
-    private:
-        NooFrame *frames[MAX_FRAMES] = {};
-        PaStream *streams[2] = {};
+private:
+    NooFrame *frames[MAX_FRAMES] = {};
+    PaStream *streams[2] = {};
 
-        bool OnInit();
-        int  OnExit();
+    bool OnInit();
+    int OnExit();
 
-        void update(wxTimerEvent &event);
+    static int audioCallback(const void *in, void *out, unsigned long count,
+        const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
+    static int micCallback(const void *in, void *out, unsigned long count,
+        const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
 
-        static int audioCallback(const void *in, void *out, unsigned long count,
-            const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
-        static int micCallback(const void *in, void *out, unsigned long count,
-            const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
-
-        wxDECLARE_EVENT_TABLE();
+    void update(wxTimerEvent &event);
+    wxDECLARE_EVENT_TABLE();
 };
-
-#endif // NOO_APP_H

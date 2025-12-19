@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef SAVE_STATES_H
-#define SAVE_STATES_H
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -27,34 +26,30 @@
 
 class Core;
 
-enum StateResult
-{
+enum StateResult {
     STATE_SUCCESS,
     STATE_FILE_FAIL,
     STATE_FORMAT_FAIL,
     STATE_VERSION_FAIL
 };
 
-class SaveStates
-{
-    public:
-        SaveStates(Core *core): core(core) {}
-        void setPath(std::string path, bool gba);
-        void setFd(int fd, bool gba);
+class SaveStates {
+public:
+    SaveStates(Core *core): core(core) {}
+    void setPath(std::string path, bool gba);
+    void setFd(int fd, bool gba);
 
-        StateResult checkState();
-        bool saveState();
-        bool loadState();
+    StateResult checkState();
+    bool saveState();
+    bool loadState();
 
-    private:
-        Core *core;
-        std::string ndsPath, gbaPath;
-        int ndsFd = -1, gbaFd = -1;
+private:
+    Core *core;
+    std::string ndsPath, gbaPath;
+    int ndsFd = -1, gbaFd = -1;
 
-        static const char *stateTag;
-        static const uint32_t stateVersion;
+    static const char *stateTag;
+    static const uint32_t stateVersion;
 
-        FILE *openFile(const char *mode);
+    FILE *openFile(const char *mode);
 };
-
-#endif // SAVE_STATES_H

@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,26 +17,22 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "save_states.h"
 #include "core.h"
 
 const char *SaveStates::stateTag = "NOOD";
-const uint32_t SaveStates::stateVersion = 4;
+const uint32_t SaveStates::stateVersion = 7;
 
-void SaveStates::setPath(std::string path, bool gba)
-{
+void SaveStates::setPath(std::string path, bool gba) {
     // Set the NDS or GBA state path
     (gba ? gbaPath : ndsPath) = path;
 }
 
-void SaveStates::setFd(int fd, bool gba)
-{
+void SaveStates::setFd(int fd, bool gba) {
     // Set the NDS or GBA state descriptor
     (gba ? gbaFd : ndsFd) = fd;
 }
 
-FILE *SaveStates::openFile(const char *mode)
-{
+FILE *SaveStates::openFile(const char *mode) {
     // Open the NDS or GBA state file based on what's running
     if (gbaFd != -1 && (core->gbaMode || ndsFd == -1))
         return fdopen(dup(gbaFd), mode);
@@ -49,8 +45,7 @@ FILE *SaveStates::openFile(const char *mode)
     return nullptr;
 }
 
-StateResult SaveStates::checkState()
-{
+StateResult SaveStates::checkState() {
     // Try to open the state file, if it exists
     FILE *file = openFile("rb");
     if (!file) return STATE_FILE_FAIL;
@@ -77,8 +72,7 @@ StateResult SaveStates::checkState()
     return STATE_SUCCESS;
 }
 
-bool SaveStates::saveState()
-{
+bool SaveStates::saveState() {
     // Open the state file and write the header
     MemFile file(openFile("wb"));
     if (!file.opened()) return false;
@@ -87,9 +81,6 @@ bool SaveStates::saveState()
 
     // Save the state of every component
     core->saveState(file);
-    core->bios[0].saveState(file);
-    core->bios[1].saveState(file);
-    core->bios[2].saveState(file);
     core->cartridgeGba.saveState(file);
     core->cartridgeNds.saveState(file);
     core->cp15.saveState(file);
@@ -101,6 +92,10 @@ bool SaveStates::saveState()
     core->gpu2D[1].saveState(file);
     core->gpu3D.saveState(file);
     core->gpu3DRenderer.saveState(file);
+    core->hleArm7.saveState(file);
+    core->hleBios[0].saveState(file);
+    core->hleBios[1].saveState(file);
+    core->hleBios[2].saveState(file);
     core->interpreter[0].saveState(file);
     core->interpreter[1].saveState(file);
     core->ipc.saveState(file);
@@ -115,8 +110,7 @@ bool SaveStates::saveState()
     return true;
 }
 
-bool SaveStates::loadState()
-{
+bool SaveStates::loadState() {
     // Open the state file and read past the header
     MemFile file(openFile("rb"));
     if (!file.opened()) return false;
@@ -124,9 +118,6 @@ bool SaveStates::loadState()
 
     // Load the state of every component
     core->loadState(file);
-    core->bios[0].loadState(file);
-    core->bios[1].loadState(file);
-    core->bios[2].loadState(file);
     core->cartridgeGba.loadState(file);
     core->cartridgeNds.loadState(file);
     core->cp15.loadState(file);
@@ -138,6 +129,10 @@ bool SaveStates::loadState()
     core->gpu2D[1].loadState(file);
     core->gpu3D.loadState(file);
     core->gpu3DRenderer.loadState(file);
+    core->hleArm7.loadState(file);
+    core->hleBios[0].loadState(file);
+    core->hleBios[1].loadState(file);
+    core->hleBios[2].loadState(file);
     core->interpreter[0].loadState(file);
     core->interpreter[1].loadState(file);
     core->ipc.loadState(file);

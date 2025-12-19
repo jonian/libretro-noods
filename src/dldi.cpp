@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -18,22 +18,17 @@
 */
 
 #include <cstring>
-#include "dldi.h"
 #include "core.h"
-#include "settings.h"
 
-Dldi::~Dldi()
-{
+Dldi::~Dldi() {
     // Ensure the SD image is closed
     if (sdImage)
         fclose(sdImage);
 }
 
-void Dldi::patchRom(uint8_t *rom, uint32_t offset, uint32_t size)
-{
+void Dldi::patchRom(uint8_t *rom, uint32_t offset, uint32_t size) {
     // Scan the ROM for DLDI drivers and patch them if found
-    for (uint32_t i = 0; i < size; i += 4)
-    {
+    for (uint32_t i = 0; i < size; i += 4) {
         // Check for the DLDI magic number
         if (U8TO32(rom, i) != 0xBF8DA5ED)
         next:
@@ -41,16 +36,14 @@ void Dldi::patchRom(uint8_t *rom, uint32_t offset, uint32_t size)
 
         // Check for the DLDI magic string
         const char *str = " Chishm\0";
-        for (size_t j = 0; j < 8; j++)
-        {
+        for (size_t j = 0; j < 8; j++) {
             if (rom[i + 4 + j] != str[j])
                 goto next;
         }
 
         // Ensure there's room to patch the DLDI driver
-        if (rom[i + 0x0F] < 0x08) // Space in ROM
-        {
-            LOG("Not enough space to patch DLDI driver at ROM offset 0x%X\n", offset + i);
+        if (rom[i + 0x0F] < 0x08) { // Space in ROM
+            LOG_CRIT("Not enough space to patch DLDI driver at ROM offset 0x%X\n", offset + i);
             break;
         }
 
@@ -79,26 +72,23 @@ void Dldi::patchRom(uint8_t *rom, uint32_t offset, uint32_t size)
         U32TO8(rom, i + 0x94, DLDI_STOP); // shutdown()
 
         // Confirm that a driver has been patched
-        LOG("Patched DLDI driver at ROM offset 0x%X\n", offset + i);
+        LOG_INFO("Patched DLDI driver at ROM offset 0x%X\n", offset + i);
         patched = true;
     }
 }
 
-int Dldi::startup()
-{
+int Dldi::startup() {
     // Try to open the SD image
     sdImage = fopen(Settings::sdImagePath.c_str(), "rb+");
     return (sdImage ? 1 : 0);
 }
 
-int Dldi::isInserted()
-{
+int Dldi::isInserted() {
     // Check if the SD image is opened
     return (sdImage ? 1 : 0);
 }
 
-int Dldi::readSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf)
-{
+int Dldi::readSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf) {
     // Get the SD offset and size in bytes
     if (!sdImage) return 0;
     const uint64_t offset = uint64_t(sector) << 9;
@@ -116,8 +106,7 @@ int Dldi::readSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t 
     return 1;
 }
 
-int Dldi::writeSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf)
-{
+int Dldi::writeSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf) {
     // Get the SD offset and size in bytes
     if (!sdImage) return 0;
     const uint64_t offset = uint64_t(sector) << 9;
@@ -135,14 +124,12 @@ int Dldi::writeSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t
     return 1;
 }
 
-int Dldi::clearStatus()
-{
+int Dldi::clearStatus() {
     // Dummy function
     return (sdImage ? 1 : 0);
 }
 
-int Dldi::shutdown()
-{
+int Dldi::shutdown() {
     // Close the SD image
     if (!sdImage) return 0;
     fclose(sdImage);

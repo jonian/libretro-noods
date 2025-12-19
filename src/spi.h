@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,17 +17,13 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef SPI_H
-#define SPI_H
+#pragma once
 
 #include <cstdint>
 #include <cstdio>
 #include <mutex>
 
-#include "memfile.h"
-
-enum Language
-{
+enum Language {
     LG_JAPANESE = 0,
     LG_ENGLISH,
     LG_FRENCH,
@@ -38,53 +34,52 @@ enum Language
 
 class Core;
 
-class Spi
-{
-    public:
-        Spi(Core *core): core(core) {}
-        ~Spi();
+class Spi {
+public:
+    uint16_t touchX = 0x000;
+    uint16_t touchY = 0xFFF;
 
-        void saveState(MemFile &file);
-        void loadState(MemFile &file);
+    Spi(Core *core): core(core) {}
+    ~Spi();
 
-        bool loadFirmware();
-        void directBoot();
+    void saveState(MemFile &file);
+    void loadState(MemFile &file);
 
-        void setTouch(int x, int y);
-        void clearTouch();
+    bool loadFirmware();
+    void directBoot();
 
-        static void setLanguage(Language lang) { language = lang; }
-        void sendMicData(const int16_t* samples, size_t count, size_t rate);
+    void setTouch(int x, int y);
+    void clearTouch();
 
-        uint16_t readSpiCnt()  { return spiCnt;  }
-        uint8_t  readSpiData() { return spiData; }
+    static void setLanguage(Language lang) { language = lang; }
+    void sendMicData(const int16_t* samples, size_t count, size_t rate);
 
-        void writeSpiCnt(uint16_t mask, uint16_t value);
-        void writeSpiData(uint8_t value);
+    uint16_t readSpiCnt() { return spiCnt; }
+    uint8_t readSpiData() { return spiData; }
 
-    private:
-        Core *core;
+    void writeSpiCnt(uint16_t mask, uint16_t value);
+    void writeSpiData(uint8_t value);
 
-        static Language language;
-        uint8_t *firmware = nullptr;
-        size_t firmSize = 0;
+private:
+    Core *core;
 
-        int16_t *micBuffer = nullptr;
-        size_t micBufSize = 0;
-        uint32_t micCycles = 0;
-        uint32_t micStep = 0;
-        uint16_t micSample = 0;
-        std::mutex mutex;
+    static Language language;
+    uint8_t *firmware = nullptr;
+    size_t firmSize = 0;
 
-        uint32_t writeCount = 0;
-        uint32_t address = 0;
-        uint8_t command = 0;
+    int16_t *micBuffer = nullptr;
+    size_t micBufSize = 0;
+    uint32_t micCycles = 0;
+    uint32_t micStep = 0;
+    uint16_t micSample = 0;
+    std::mutex mutex;
 
-        uint16_t touchX = 0x000, touchY = 0xFFF;
-        uint16_t spiCnt = 0;
-        uint8_t spiData = 0;
+    uint32_t writeCount = 0;
+    uint32_t address = 0;
+    uint8_t command = 0;
 
-        static uint16_t crc16(uint32_t value, uint8_t *data, size_t size);
+    uint16_t spiCnt = 0;
+    uint8_t spiData = 0;
+
+    static uint16_t crc16(uint32_t value, uint8_t *data, size_t size);
 };
-
-#endif // SPI_H

@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -24,14 +24,13 @@
 
 class NooApp;
 
-class LayoutDialog: public wxDialog
-{
+class LayoutDialog: public wxDialog {
     public:
         LayoutDialog(NooApp *app);
 
     private:
         NooApp *app;
-        int prevSettings[11];
+        int prevSettings[10];
 
         void posCenter(wxCommandEvent &event);
         void posTop(wxCommandEvent &event);
@@ -62,7 +61,6 @@ class LayoutDialog: public wxDialog
         void intScale(wxCommandEvent &event);
         void gbaCrop(wxCommandEvent &event);
         void splitScreens(wxCommandEvent &event);
-        void screenGhost(wxCommandEvent &event);
         void cancel(wxCommandEvent &event);
         void confirm(wxCommandEvent &event);
 

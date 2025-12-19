@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,11 +17,9 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "input.h"
 #include "core.h"
 
-void Input::pressKey(int key)
-{
+void Input::pressKey(int key) {
     // Clear key bits to indicate presses
     if (key < 10) // A, B, select, start, right, left, up, down, R, L
         keyInput &= ~BIT(key);
@@ -29,8 +27,7 @@ void Input::pressKey(int key)
         extKeyIn &= ~BIT(key - 10);
 }
 
-void Input::releaseKey(int key)
-{
+void Input::releaseKey(int key) {
     // Set key bits to indicate releases
     if (key < 10) // A, B, select, start, right, left, up, down, R, L
         keyInput |= BIT(key);
@@ -38,14 +35,12 @@ void Input::releaseKey(int key)
         extKeyIn |= BIT(key - 10);
 }
 
-void Input::pressScreen()
-{
+void Input::pressScreen() {
     // Clear the pen down bit to indicate a touch press
     extKeyIn &= ~BIT(6);
 }
 
-void Input::releaseScreen()
-{
+void Input::releaseScreen() {
     // Set the pen down bit to indicate a touch release
     extKeyIn |= BIT(6);
 }

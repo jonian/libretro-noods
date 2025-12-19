@@ -17,7 +17,29 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "noo_app.h"
+#pragma once
 
-// Let wxWidgets handle the main function
-wxIMPLEMENT_APP(NooApp);
+#include <cstdint>
+#include <cstdio>
+
+class Core;
+
+class HleArm7 {
+public:
+    HleArm7(Core *core): core(core) {}
+    void init();
+
+    void saveState(FILE *file);
+    void loadState(FILE *file);
+
+    void ipcSync(uint8_t value);
+    void ipcFifo(uint32_t value);
+    void runFrame();
+
+private:
+    Core *core;
+    bool inited = false;
+    bool autoTouch = false;
+
+    void pollTouch(uint32_t value);
+};

@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,21 +17,16 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef NDS_ICON_H
-#define NDS_ICON_H
+#pragma once
 
 #include <cstdint>
 #include <string>
 
-class NdsIcon
-{
-    public:
-        NdsIcon(std::string path, int fd = -1);
+class NdsIcon {
+public:
+    NdsIcon(std::string path, int fd = -1);
+    uint32_t *getIcon() { return icon; }
 
-        uint32_t *getIcon() { return icon; }
-
-    private:
-        uint32_t icon[32 * 32];
+private:
+    uint32_t icon[32 * 32];
 };
-
-#endif // NDS_ICON_H

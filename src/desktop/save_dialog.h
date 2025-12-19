@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,42 +17,37 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef SAVE_DIALOG_H
-#define SAVE_DIALOG_H
+#pragma once
 
 #include <wx/wx.h>
 
 class NooFrame;
 class Cartridge;
 
-class SaveDialog: public wxDialog
-{
-    public:
-        SaveDialog(NooFrame *frame);
+class SaveDialog: public wxDialog {
+public:
+    SaveDialog(NooFrame *frame);
 
-    private:
-        NooFrame *frame;
-        Cartridge *cartridge;
+private:
+    NooFrame *frame;
+    Cartridge *cartridge;
 
-        bool gba = false;
-        int selection = 0;
+    bool gba = false;
+    int selection = 0;
 
-        int selectionToSize(int selection);
-        int sizeToSelection(int size);
+    int selectionToSize(int selection);
+    int sizeToSelection(int size);
 
-        void selection0(wxCommandEvent &event);
-        void selection1(wxCommandEvent &event);
-        void selection2(wxCommandEvent &event);
-        void selection3(wxCommandEvent &event);
-        void selection4(wxCommandEvent &event);
-        void selection5(wxCommandEvent &event);
-        void selection6(wxCommandEvent &event);
-        void selection7(wxCommandEvent &event);
-        void selection8(wxCommandEvent &event);
-        void selection9(wxCommandEvent &event);
-        void confirm(wxCommandEvent &event);
-
-        wxDECLARE_EVENT_TABLE();
+    void selection0(wxCommandEvent &event);
+    void selection1(wxCommandEvent &event);
+    void selection2(wxCommandEvent &event);
+    void selection3(wxCommandEvent &event);
+    void selection4(wxCommandEvent &event);
+    void selection5(wxCommandEvent &event);
+    void selection6(wxCommandEvent &event);
+    void selection7(wxCommandEvent &event);
+    void selection8(wxCommandEvent &event);
+    void selection9(wxCommandEvent &event);
+    void confirm(wxCommandEvent &event);
+    wxDECLARE_EVENT_TABLE();
 };
-
-#endif // SAVE_DIALOG_H

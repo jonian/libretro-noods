@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -41,8 +41,7 @@ import android.view.View;
 import android.view.inputmethod.BaseInputConnection;
 import android.widget.TextView;
 
-public class NooActivity extends AppCompatActivity
-{
+public class NooActivity extends AppCompatActivity {
     private boolean running;
     private Thread coreThread, saveThread, fpsThread;
 
@@ -59,8 +58,7 @@ public class NooActivity extends AppCompatActivity
     private boolean showingFps;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         layout = new ConstraintLayout(this);
         view = new GLSurfaceView(this);
@@ -77,29 +75,21 @@ public class NooActivity extends AppCompatActivity
         view.setRenderer(renderer);
 
         // Handle non-button screen touches
-        view.setOnTouchListener(new View.OnTouchListener()
-        {
+        view.setOnTouchListener(new View.OnTouchListener() {
             @Override
-            public boolean onTouch(View view, MotionEvent event)
-            {
-                switch (event.getAction())
-                {
-                    case MotionEvent.ACTION_DOWN:
-                    case MotionEvent.ACTION_MOVE:
-                    {
-                        // Send the touch coordinates to the core
-                        pressScreen((int)event.getX(), (int)event.getY());
-                        break;
-                    }
+            public boolean onTouch(View view, MotionEvent event) {
+                switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                case MotionEvent.ACTION_MOVE:
+                    // Send the touch coordinates to the core
+                    pressScreen((int)event.getX(), (int)event.getY());
+                    break;
 
-                    case MotionEvent.ACTION_UP:
-                    {
-                        // Send a touch release to the core
-                        releaseScreen();
-                        break;
-                    }
+                case MotionEvent.ACTION_UP:
+                    // Send a touch release to the core
+                    releaseScreen();
+                    break;
                 }
-
                 return true;
             }
         });
@@ -121,22 +111,19 @@ public class NooActivity extends AppCompatActivity
     }
 
     @Override
-    protected void onPause()
-    {
+    protected void onPause() {
         pauseCore();
         super.onPause();
 
         // Restore the FPS limiter
-        if (fpsLimiterBackup != 0)
-        {
+        if (fpsLimiterBackup != 0) {
             SettingsMenu.setFpsLimiter(fpsLimiterBackup);
             fpsLimiterBackup = 0;
         }
     }
 
     @Override
-    protected void onResume()
-    {
+    protected void onResume() {
         resumeCore();
         super.onResume();
 
@@ -148,166 +135,152 @@ public class NooActivity extends AppCompatActivity
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu)
-    {
+    public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.noo_menu, menu);
         return true;
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        switch (item.getItemId())
-        {
-            case R.id.controls_action:
-                // Toggle the on-screen button state
-                SharedPreferences.Editor editor = prefs.edit();
-                editor.putBoolean("show_buttons", showingButtons = !showingButtons);
-                editor.commit();
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+        case R.id.controls_action:
+            // Toggle the on-screen button state
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putBoolean("show_buttons", showingButtons = !showingButtons);
+            editor.commit();
 
-                // Show or hide the on-screen buttons
-                if (showingButtons)
-                    for (int i = 0; i < 6; i++)
-                        layout.addView(buttons[i]);
-                else
-                    for (int i = 0; i < 6; i++)
-                        layout.removeView(buttons[i]);
-                return true;
+            // Show or hide the on-screen buttons
+            if (showingButtons)
+                for (int i = 0; i < 6; i++)
+                    layout.addView(buttons[i]);
+            else
+                for (int i = 0; i < 6; i++)
+                    layout.removeView(buttons[i]);
+            return true;
 
-            case R.id.restart_action:
-                // Restart the core
-                pauseCore();
-                restartCore();
-                resumeCore();
-                return true;
+        case R.id.restart_action:
+            // Restart the core
+            pauseCore();
+            restartCore();
+            resumeCore();
+            return true;
 
-            case R.id.save_state_action:
-                // Create a confirmation dialog
-                AlertDialog.Builder builder = new AlertDialog.Builder(NooActivity.this);
-                builder.setTitle("Save State");
-                builder.setNegativeButton("Cancel", null);
-                builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
-                {
+        case R.id.save_state_action:
+            // Create a confirmation dialog
+            AlertDialog.Builder builder = new AlertDialog.Builder(NooActivity.this);
+            builder.setTitle("Save State");
+            builder.setNegativeButton("Cancel", null);
+            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int id) {
+                    // Save the state if confirmed
+                    pauseCore();
+                    saveState();
+                    resumeCore();
+                }
+            });
+
+            // Use the message with extra information if a state file doesn't exist yet
+            if (checkState() == 1) // File fail
+                builder.setMessage("Saving and loading states is dangerous and can lead to data " +
+                    "loss. States are also not guaranteed to be compatible across emulator " +
+                    "versions. Please rely on in-game saving to keep your progress, and back up " +
+                    ".sav files before using this feature. Do you want to save the current state?");
+            else
+                builder.setMessage("Do you want to overwrite the saved " +
+                    "state with the current state? This can't be undone!");
+            builder.create().show();
+            return true;
+
+        case R.id.load_state_action:
+            // Create a confirmation dialog, or an error if something went wrong
+            AlertDialog.Builder builder2 = new AlertDialog.Builder(NooActivity.this);
+            builder2.setTitle("Load State");
+            switch (checkState()) {
+            case 0: // Success
+                builder2.setMessage("Do you want to load the saved state " +
+                    "and lose the current state? This can't be undone!");
+                builder2.setNegativeButton("Cancel", null);
+                builder2.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
-                    public void onClick(DialogInterface dialog, int id)
-                    {
-                        // Save the state if confirmed
+                    public void onClick(DialogInterface dialog, int id) {
+                        // Load the state if confirmed
                         pauseCore();
-                        saveState();
+                        loadState();
                         resumeCore();
                     }
                 });
+                break;
 
-                // Use the message with extra information if a state file doesn't exist yet
-                if (checkState() == 1) // File fail
-                    builder.setMessage("Saving and loading states is dangerous and can lead to data " +
-                        "loss. States are also not guaranteed to be compatible across emulator " +
-                        "versions. Please rely on in-game saving to keep your progress, and back up " +
-                        ".sav files before using this feature. Do you want to save the current state?");
-                else
-                    builder.setMessage("Do you want to overwrite the saved " +
-                        "state with the current state? This can't be undone!");
-                builder.create().show();
-                return true;
+            case 1: // File fail
+                builder2.setMessage("The state file doesn't exist or couldn't be opened.");
+                builder2.setNegativeButton("OK", null);
+                break;
 
-            case R.id.load_state_action:
-                // Create a confirmation dialog, or an error if something went wrong
-                AlertDialog.Builder builder2 = new AlertDialog.Builder(NooActivity.this);
-                builder2.setTitle("Load State");
-                switch (checkState())
-                {
-                    case 0: // Success
-                        builder2.setMessage("Do you want to load the saved state " +
-                            "and lose the current state? This can't be undone!");
-                        builder2.setNegativeButton("Cancel", null);
-                        builder2.setPositiveButton("OK", new DialogInterface.OnClickListener()
-                        {
-                            @Override
-                            public void onClick(DialogInterface dialog, int id)
-                            {
-                                // Load the state if confirmed
-                                pauseCore();
-                                loadState();
-                                resumeCore();
-                            }
-                        });
-                        break;
+            case 2: // Format fail
+                builder2.setMessage("The state file doesn't have a valid format.");
+                builder2.setNegativeButton("OK", null);
+                break;
 
-                    case 1: // File fail
-                        builder2.setMessage("The state file doesn't exist or couldn't be opened.");
-                        builder2.setNegativeButton("OK", null);
-                        break;
+            case 3: // Version fail
+                builder2.setMessage("The state file isn't compatible with this version of NooDS.");
+                builder2.setPositiveButton("OK", null);
+                break;
+            }
+            builder2.create().show();
+            return true;
 
-                    case 2: // Format fail
-                        builder2.setMessage("The state file doesn't have a valid format.");
-                        builder2.setNegativeButton("OK", null);
-                        break;
+        case R.id.save_type_action:
+            final boolean gba = isGbaMode();
+            final String[] names = getResources().getStringArray(gba ? R.array.save_entries_gba : R.array.save_entries_nds);
+            final int[] values = getResources().getIntArray(gba ? R.array.save_values_gba : R.array.save_values_nds);
 
-                    case 3: // Version fail
-                        builder2.setMessage("The state file isn't compatible with this version of NooDS.");
-                        builder2.setPositiveButton("OK", null);
-                        break;
+            // Create the save type dialog
+            AlertDialog.Builder builder3 = new AlertDialog.Builder(this);
+            builder3.setTitle("Change Save Type");
+            builder3.setItems(names, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, final int which) {
+                    // Confirm the change because accidentally resizing a working save file could be bad!
+                    AlertDialog.Builder builder4 = new AlertDialog.Builder(NooActivity.this);
+                    builder4.setTitle("Changing Save Type");
+                    builder4.setMessage("Are you sure? This may result in data loss!");
+                    builder4.setNegativeButton("Cancel", null);
+                    builder4.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int id) {
+                            // Apply the change and restart the core
+                            pauseCore();
+                            if (gba)
+                                resizeGbaSave(values[which]);
+                            else
+                                resizeNdsSave(values[which]);
+                            restartCore();
+                            resumeCore();
+                        }
+                    });
+                    builder4.create().show();
                 }
-                builder2.create().show();
-                return true;
+            });
+            builder3.create().show();
+            return true;
 
-            case R.id.save_type_action:
-                final boolean gba = isGbaMode();
-                final String[] names = getResources().getStringArray(gba ? R.array.save_entries_gba : R.array.save_entries_nds);
-                final int[] values = getResources().getIntArray(gba ? R.array.save_values_gba : R.array.save_values_nds);
+        case R.id.settings_action:
+            // Open the settings menu
+            startActivity(new Intent(this, SettingsMenu.class));
+            return true;
 
-                // Create the save type dialog
-                AlertDialog.Builder builder3 = new AlertDialog.Builder(this);
-                builder3.setTitle("Change Save Type");
-                builder3.setItems(names, new DialogInterface.OnClickListener()
-                {
-                    @Override
-                    public void onClick(DialogInterface dialog, final int which)
-                    {
-                        // Confirm the change because accidentally resizing a working save file could be bad!
-                        AlertDialog.Builder builder4 = new AlertDialog.Builder(NooActivity.this);
-                        builder4.setTitle("Changing Save Type");
-                        builder4.setMessage("Are you sure? This may result in data loss!");
-                        builder4.setNegativeButton("Cancel", null);
-                        builder4.setPositiveButton("OK", new DialogInterface.OnClickListener()
-                        {
-                            @Override
-                            public void onClick(DialogInterface dialog, int id)
-                            {
-                                // Apply the change and restart the core
-                                pauseCore();
-                                if (gba)
-                                    resizeGbaSave(values[which]);
-                                else
-                                    resizeNdsSave(values[which]);
-                                restartCore();
-                                resumeCore();
-                            }
-                        });
-                        builder4.create().show();
-                    }
-                });
-                builder3.create().show();
-                return true;
-
-            case R.id.settings_action:
-                // Open the settings menu
-                startActivity(new Intent(this, SettingsMenu.class));
-                return true;
-
-            case R.id.browser_action:
-                // Go back to the file browser
-                startActivity(new Intent(this, FileBrowser.class));
-                finish();
-                return true;
+        case R.id.browser_action:
+            // Go back to the file browser
+            startActivity(new Intent(this, FileBrowser.class));
+            finish();
+            return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
     @Override
-    public void onOptionsMenuClosed(Menu menu)
-    {
+    public void onOptionsMenuClosed(Menu menu) {
         super.onOptionsMenuClosed(menu);
 
         // Rehide the status and navigation bars
@@ -318,46 +291,37 @@ public class NooActivity extends AppCompatActivity
     }
 
     @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event)
-    {
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Trigger a key press if a mapped key was pressed
-        for (int i = 0; i < 12; i++)
-        {
-            if (keyCode == BindingsPreference.getKeyBind(i) - 1)
-            {
+        for (int i = 0; i < 12; i++) {
+            if (keyCode == BindingsPreference.getKeyBind(i) - 1) {
                 NooButton.pressKey(i);
                 return true;
             }
         }
 
         // Handle pressing special hotkeys
-        if (keyCode == BindingsPreference.getKeyBind(12) - 1) // Fast Forward Hold
-        {
+        if (keyCode == BindingsPreference.getKeyBind(12) - 1) { // Fast Forward Hold
             // Disable the FPS limiter
-            if (SettingsMenu.getFpsLimiter() != 0)
-            {
+            if (SettingsMenu.getFpsLimiter() != 0) {
                 fpsLimiterBackup = SettingsMenu.getFpsLimiter();
                 SettingsMenu.setFpsLimiter(0);
             }
             return true;
         }
-        else if (keyCode == BindingsPreference.getKeyBind(13) - 1) // Fast Forward Toggle
-        {
+        else if (keyCode == BindingsPreference.getKeyBind(13) - 1) { // Fast Forward Toggle
             // Toggle between disabling and restoring the FPS limiter
-            if (SettingsMenu.getFpsLimiter() != 0)
-            {
+            if (SettingsMenu.getFpsLimiter() != 0) {
                 fpsLimiterBackup = SettingsMenu.getFpsLimiter();
                 SettingsMenu.setFpsLimiter(0);
             }
-            else if (fpsLimiterBackup != 0)
-            {
+            else if (fpsLimiterBackup != 0) {
                 SettingsMenu.setFpsLimiter(fpsLimiterBackup);
                 fpsLimiterBackup = 0;
             }
             return true;
         }
-        else if (keyCode == BindingsPreference.getKeyBind(14) - 1) // Screen Swap Toggle
-        {
+        else if (keyCode == BindingsPreference.getKeyBind(14) - 1) { // Screen Swap Toggle
             // Toggle between favoring the top or bottom screen
             SettingsMenu.setScreenSizing((SettingsMenu.getScreenSizing() == 1) ? 2 : 1);
             renderer.updateLayout(renderer.width, renderer.height);
@@ -367,24 +331,19 @@ public class NooActivity extends AppCompatActivity
     }
 
     @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event)
-    {
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
         // Trigger a key release if a mapped key was released
-        for (int i = 0; i < 12; i++)
-        {
-            if (keyCode == BindingsPreference.getKeyBind(i) - 1)
-            {
+        for (int i = 0; i < 12; i++) {
+            if (keyCode == BindingsPreference.getKeyBind(i) - 1) {
                 NooButton.releaseKey(i);
                 return true;
             }
         }
 
         // Handle releasing special hotkeys
-        if (keyCode == BindingsPreference.getKeyBind(12) - 1) // Fast Forward Hold
-        {
+        if (keyCode == BindingsPreference.getKeyBind(12) - 1) { // Fast Forward Hold
             // Restore the FPS limiter
-            if (fpsLimiterBackup != 0)
-            {
+            if (fpsLimiterBackup != 0) {
                 SettingsMenu.setFpsLimiter(fpsLimiterBackup);
                 fpsLimiterBackup = 0;
             }
@@ -394,16 +353,14 @@ public class NooActivity extends AppCompatActivity
     }
 
     @Override
-    public void onBackPressed()
-    {
+    public void onBackPressed() {
         // Simulate a menu button press to open the menu
         BaseInputConnection inputConnection = new BaseInputConnection(view, true);
         inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MENU));
         inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MENU));
     }
 
-    public void updateButtons()
-    {
+    public void updateButtons() {
         // Remove old buttons from the layout if visible
         if (!initButtons && showingButtons)
             for (int i = 0; i < 6; i++)
@@ -444,15 +401,13 @@ public class NooActivity extends AppCompatActivity
         initButtons = false;
     }
 
-    private boolean canEnableMic()
-    {
+    private boolean canEnableMic() {
         // Check if the microphone is enabled and permission has been granted
         int perm = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
         return perm == PackageManager.PERMISSION_GRANTED && SettingsMenu.getMicEnable() == 1;
     }
 
-    private void pauseCore()
-    {
+    private void pauseCore() {
         // Stop audio output and input if enabled
         running = false;
         if (canEnableMic())
@@ -460,27 +415,23 @@ public class NooActivity extends AppCompatActivity
         stopAudioPlayer();
 
         // Wait for the emulator to stop
-        try
-        {
+        try {
             coreThread.join();
             saveThread.interrupt();
             saveThread.join();
-            if (SettingsMenu.getShowFpsCounter() != 0)
-            {
+            if (SettingsMenu.getShowFpsCounter() != 0) {
                 fpsThread.interrupt();
                 fpsThread.join();
             }
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             // Oh well, I guess
         }
 
         view.onPause();
     }
 
-    private void resumeCore()
-    {
+    private void resumeCore() {
         // Start audio output and input if enabled
         running = true;
         startAudioPlayer();
@@ -488,13 +439,11 @@ public class NooActivity extends AppCompatActivity
             startAudioRecorder();
 
         // Prepare the core thread
-        coreThread = new Thread()
-        {
+        coreThread = new Thread() {
             @Override
-            public void run()
-            {             
+            public void run() {
                 while (running)
-                    runFrame();
+                    runCore();
             }
         };
 
@@ -502,20 +451,15 @@ public class NooActivity extends AppCompatActivity
         coreThread.start();
 
         // Prepare the save thread
-        saveThread = new Thread()
-        {
+        saveThread = new Thread() {
             @Override
-            public void run()
-            {
-                while (running)
-                {
+            public void run() {
+                while (running) {
                     // Check save files every few seconds and update them if changed
-                    try
-                    {
+                    try {
                         Thread.sleep(3000);
                     }
-                    catch (Exception e)
-                    {
+                    catch (Exception e) {
                         // Oh well, I guess
                     }
 
@@ -527,40 +471,31 @@ public class NooActivity extends AppCompatActivity
         saveThread.setPriority(Thread.MIN_PRIORITY);
         saveThread.start();
 
-        if (SettingsMenu.getShowFpsCounter() != 0)
-        {
+        if (SettingsMenu.getShowFpsCounter() != 0) {
             // Add the FPS counter to the layout if enabled
-            if (!showingFps)
-            {
+            if (!showingFps) {
                 layout.addView(fpsCounter);
                 showingFps = true;
             }
 
             // Prepare the FPS counter thread if enabled
-            fpsThread = new Thread()
-            {
+            fpsThread = new Thread() {
                 @Override
-                public void run()
-                {             
-                    while (running)
-                    {
+                public void run() {
+                    while (running) {
                         // Update the FPS counter text on the UI thread
-                        runOnUiThread(new Runnable()
-                        {
+                        runOnUiThread(new Runnable() {
                             @Override
-                            public void run()
-                            {
+                            public void run() {
                                 fpsCounter.setText(Integer.toString(getFps()) + " FPS");
                             }
                         });
 
                         // Wait a second before updating the FPS counter again
-                        try
-                        {
+                        try {
                             Thread.sleep(1000);
                         }
-                        catch (Exception e)
-                        {
+                        catch (Exception e) {
                             // Oh well, I guess
                         }
                     }
@@ -570,8 +505,7 @@ public class NooActivity extends AppCompatActivity
             fpsThread.setPriority(Thread.MIN_PRIORITY);
             fpsThread.start();
         }
-        else if (showingFps)
-        {
+        else if (showingFps) {
             // Remove the FPS counter from the layout if disabled
             layout.removeView(fpsCounter);
             showingFps = false;
@@ -589,7 +523,7 @@ public class NooActivity extends AppCompatActivity
     public static native void stopAudioRecorder();
     public static native int getFps();
     public static native boolean isGbaMode();
-    public static native void runFrame();
+    public static native void runCore();
     public static native void writeSave();
     public static native void restartCore();
     public static native int checkState();

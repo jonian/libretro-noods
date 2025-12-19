@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,14 +17,12 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef SETTINGS_H
-#define SETTINGS_H
+#pragma once
 
 #include <string>
 #include <vector>
 
-struct Setting
-{
+struct Setting {
     std::string name;
     void *value;
     bool isString;
@@ -33,36 +31,37 @@ struct Setting
         name(name), value(value), isString(isString) {}
 };
 
-class Settings
-{
-    public:
-        static int directBoot;
-        static int fpsLimiter;
-        static int romInRam;
-        static int threaded2D;
-        static int threaded3D;
-        static int highRes3D;
-        static int screenFilter;
-        static int screenGhost;
-        static int savesFolder;
-        static int statesFolder;
-        static int cheatsFolder;
-        static int dsiMode;
+class Settings {
+public:
+    static int directBoot;
+    static int romInRam;
+    static int fpsLimiter;
+    static int frameskip;
+    static int threaded2D;
+    static int threaded3D;
+    static int highRes3D;
+    static int screenGhost;
+    static int emulateAudio;
+    static int audio16Bit;
+    static int savesFolder;
+    static int statesFolder;
+    static int cheatsFolder;
+    static int screenFilter;
+    static int arm7Hle;
+    static int dsiMode;
 
-        static std::string bios9Path;
-        static std::string bios7Path;
-        static std::string firmwarePath;
-        static std::string gbaBiosPath;
-        static std::string sdImagePath;
-        static std::string basePath;
+    static std::string bios9Path;
+    static std::string bios7Path;
+    static std::string firmwarePath;
+    static std::string gbaBiosPath;
+    static std::string sdImagePath;
+    static std::string basePath;
 
-        static void add(std::vector<Setting> &settings);
-        static bool load(std::string path = ".");
-        static bool save();
+    static void add(std::vector<Setting> &settings);
+    static bool load(std::string path = ".");
+    static bool save();
 
-    private:
-        static std::vector<Setting> settings;
-        Settings() {} // Private to prevent instantiation
+private:
+    static std::vector<Setting> settings;
+    Settings() {} // Private to prevent instantiation
 };
-
-#endif // SETTINGS_H

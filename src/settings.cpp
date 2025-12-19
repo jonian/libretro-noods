@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -18,20 +18,23 @@
 */
 
 #include <sys/stat.h>
-#include "settings.h"
-#include "defines.h"
+#include "core.h"
 
 int Settings::directBoot = 1;
-int Settings::fpsLimiter = 1;
 int Settings::romInRam = 0;
+int Settings::fpsLimiter = 1;
+int Settings::frameskip = 0;
 int Settings::threaded2D = 1;
 int Settings::threaded3D = 1;
 int Settings::highRes3D = 0;
-int Settings::screenFilter = 2;
 int Settings::screenGhost = 0;
+int Settings::emulateAudio = 1;
+int Settings::audio16Bit = 1;
 int Settings::savesFolder = 0;
 int Settings::statesFolder = 1;
 int Settings::cheatsFolder = 1;
+int Settings::screenFilter = 2;
+int Settings::arm7Hle = 0;
 int Settings::dsiMode = 0;
 
 std::string Settings::bios9Path = "bios9.bin";
@@ -41,19 +44,22 @@ std::string Settings::gbaBiosPath = "gba_bios.bin";
 std::string Settings::sdImagePath = "sd.img";
 std::string Settings::basePath = ".";
 
-std::vector<Setting> Settings::settings =
-{
+std::vector<Setting> Settings::settings = {
     Setting("directBoot", &directBoot, false),
-    Setting("fpsLimiter", &fpsLimiter, false),
     Setting("romInRam", &romInRam, false),
+    Setting("fpsLimiter", &fpsLimiter, false),
+    Setting("frameskip", &frameskip, false),
     Setting("threaded2D", &threaded2D, false),
     Setting("threaded3D", &threaded3D, false),
     Setting("highRes3D", &highRes3D, false),
-    Setting("screenFilter", &screenFilter, false),
     Setting("screenGhost", &screenGhost, false),
+    Setting("emulateAudio", &emulateAudio, false),
+    Setting("audio16Bit", &audio16Bit, false),
     Setting("savesFolder", &savesFolder, false),
     Setting("statesFolder", &statesFolder, false),
     Setting("cheatsFolder", &cheatsFolder, false),
+    Setting("screenFilter", &screenFilter, false),
+    Setting("arm7Hle", &arm7Hle, false),
     Setting("dsiMode", &dsiMode, false),
     Setting("bios9Path", &bios9Path, true),
     Setting("bios7Path", &bios7Path, true),
@@ -62,14 +68,12 @@ std::vector<Setting> Settings::settings =
     Setting("sdImagePath", &sdImagePath, true)
 };
 
-void Settings::add(std::vector<Setting> &settings)
-{
+void Settings::add(std::vector<Setting> &settings) {
     // Add additional settings to be loaded from the settings file
     Settings::settings.insert(Settings::settings.end(), settings.begin(), settings.end());
 }
 
-bool Settings::load(std::string path)
-{
+bool Settings::load(std::string path) {
     // Set the base path and ensure all folders exist
     mkdir((basePath = path).c_str() MKDIR_ARGS);
     mkdir((basePath + "/saves").c_str() MKDIR_ARGS);
@@ -78,8 +82,7 @@ bool Settings::load(std::string path)
 
     // Open the settings file or set defaults if it doesn't exist
     FILE *file = fopen((basePath + "/noods.ini").c_str(), "r");
-    if (!file)
-    {
+    if (!file) {
         Settings::bios9Path = basePath + "/bios9.bin";
         Settings::bios7Path = basePath + "/bios7.bin";
         Settings::firmwarePath = basePath + "/firmware.bin";
@@ -91,13 +94,11 @@ bool Settings::load(std::string path)
 
     // Read each line of the settings file and load values from them
     char data[512];
-    while (fgets(data, 512, file) != nullptr)
-    {
+    while (fgets(data, 512, file) != nullptr) {
         std::string line = data;
         size_t split = line.find('=');
         std::string name = line.substr(0, split);
-        for (size_t i = 0; i < settings.size(); i++)
-        {
+        for (size_t i = 0; i < settings.size(); i++) {
             if (name != settings[i].name) continue;
             std::string value = line.substr(split + 1, line.size() - split - 2);
             if (settings[i].isString)
@@ -113,15 +114,13 @@ bool Settings::load(std::string path)
     return true;
 }
 
-bool Settings::save()
-{
+bool Settings::save() {
     // Attempt to open the settings file
     FILE *file = fopen((basePath + "/noods.ini").c_str(), "w");
     if (!file) return false;
 
     // Write each setting to the settings file
-    for (size_t i = 0; i < settings.size(); i++)
-    {
+    for (size_t i = 0; i < settings.size(); i++) {
         std::string value = settings[i].isString ?
             *(std::string*)settings[i].value : std::to_string(*(int*)settings[i].value);
         fprintf(file, "%s=%s\n", settings[i].name.c_str(), value.c_str());

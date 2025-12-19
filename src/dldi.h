@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,16 +17,14 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef DLDI_H
-#define DLDI_H
+#pragma once
 
 #include <cstdint>
 #include <cstdio>
 
 class Core;
 
-enum DldiFunc
-{
+enum DldiFunc {
     DLDI_START = 0xF0000000,
     DLDI_INSERT,
     DLDI_READ,
@@ -35,26 +33,23 @@ enum DldiFunc
     DLDI_STOP
 };
 
-class Dldi
-{
-    public:
-        Dldi(Core *core): core(core) {}
-        ~Dldi();
+class Dldi {
+public:
+    Dldi(Core *core): core(core) {}
+    ~Dldi();
 
-        void patchRom(uint8_t *rom, uint32_t offset, uint32_t size);
-        bool isPatched() { return patched; }
+    void patchRom(uint8_t *rom, uint32_t offset, uint32_t size);
+    bool isPatched() { return patched; }
 
-        int startup();
-        int isInserted();
-        int readSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf);
-        int writeSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf);
-        int clearStatus();
-        int shutdown();
+    int startup();
+    int isInserted();
+    int readSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf);
+    int writeSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf);
+    int clearStatus();
+    int shutdown();
 
-    private:
-        Core *core;
-        bool patched = false;
-        FILE *sdImage = nullptr;
+private:
+    Core *core;
+    bool patched = false;
+    FILE *sdImage = nullptr;
 };
-
-#endif // DLDI_H

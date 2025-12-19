@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -22,16 +22,15 @@
 #include <thread>
 
 #include "core.h"
-#include "settings.h"
 
 Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gbaRomFd,
     int ndsSaveFd, int gbaSaveFd, int ndsStateFd, int gbaStateFd, int ndsCheatFd):
-    id(id), actionReplay(this), bios { Bios(this, 0, Bios::swiTable9), Bios(this, 1, Bios::swiTable7), Bios(this, 1,
-    Bios::swiTableGba) }, cartridgeGba(this), cartridgeNds(this), cp15(this), divSqrt(this), dldi(this), dma {
-    Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) }, gpu3D(this), gpu3DRenderer(this),
-    input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this), memory(this),
-    rtc(this), saveStates(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
-{
+        id(id), actionReplay(this), cartridgeGba(this), cartridgeNds(this), cp15(this), divSqrt(this),
+        dldi(this), dma { Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) },
+        gpu3D(this), gpu3DRenderer(this), hleArm7(this), hleBios { HleBios(this, 0, HleBios::swiTable9),
+        HleBios(this, 1, HleBios::swiTable7), HleBios(this, 1, HleBios::swiTableGba) }, input(this),
+        interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this), memory(this), rtc(this),
+        saveStates(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this) {
     // Try to load BIOS and firmware; require DS files when not direct booting
     bool required = !Settings::directBoot || (ndsRom == "" && gbaRom == "" && ndsRomFd == -1 && gbaRomFd == -1);
     if (!memory.loadBios9() && required) throw ERROR_BIOS;
@@ -40,6 +39,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     realGbaBios = memory.loadGbaBios();
 
     // Define the tasks that can be scheduled
+    tasks[UPDATE_RUN] = std::bind(&Core::updateRun, this);
     tasks[RESET_CYCLES] = std::bind(&Core::resetCycles, this);
     tasks[CART9_WORD_READY] = std::bind(&CartridgeNds::wordReady, &cartridgeNds, 0);
     tasks[CART7_WORD_READY] = std::bind(&CartridgeNds::wordReady, &cartridgeNds, 1);
@@ -55,7 +55,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     tasks[NDS_SCANLINE355] = std::bind(&Gpu::scanline355, &gpu);
     tasks[GBA_SCANLINE240] = std::bind(&Gpu::gbaScanline240, &gpu);
     tasks[GBA_SCANLINE308] = std::bind(&Gpu::gbaScanline308, &gpu);
-    tasks[GPU3D_COMMAND] = std::bind(&Gpu3D::runCommand, &gpu3D);
+    tasks[GPU3D_COMMANDS] = std::bind(&Gpu3D::runCommands, &gpu3D);
     tasks[ARM9_INTERRUPT] = std::bind(&Interpreter::interrupt, &interpreter[0]);
     tasks[ARM7_INTERRUPT] = std::bind(&Interpreter::interrupt, &interpreter[1]);
     tasks[NDS_SPU_SAMPLE] = std::bind(&Spu::runSample, &spu);
@@ -80,7 +80,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
 
     // Update DSi mode now and ignore changes to it later
     dsiMode = Settings::dsiMode;
-    runFunc = dsiMode ? &Interpreter::runDsiFrame : &Interpreter::runNdsFrame;
+    updateRun();
 
     // Initialize the memory and CPUs
     memory.updateMap9(0x00000000, 0xFFFFFFFF);
@@ -88,22 +88,19 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     interpreter[0].init();
     interpreter[1].init();
 
-    if (gbaRom != "" || gbaRomFd != -1)
-    {
+    if (gbaRom != "" || gbaRomFd != -1) {
         // Load a GBA ROM
         if (!cartridgeGba.setRom(gbaRom, gbaRomFd, gbaSaveFd, gbaStateFd, -1))
             throw ERROR_ROM;
 
         // Enable GBA mode right away if direct boot is enabled
-        if (Settings::directBoot && ndsRom == "" && ndsRomFd == -1)
-        {
+        if (Settings::directBoot && ndsRom == "" && ndsRomFd == -1) {
             memory.write<uint16_t>(0, 0x4000304, 0x8003); // POWCNT1
             enterGbaMode();
         }
     }
 
-    if (ndsRom != "" || ndsRomFd != -1)
-    {
+    if (ndsRom != "" || ndsRomFd != -1) {
         // Load an NDS ROM
         if (!cartridgeNds.setRom(ndsRom, ndsRomFd, ndsSaveFd, ndsStateFd, ndsCheatFd))
             throw ERROR_ROM;
@@ -112,28 +109,27 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
         actionReplay.loadCheats();
 
         // Prepare to boot the NDS ROM directly if direct boot is enabled
-        if (Settings::directBoot)
-        {
+        if (Settings::directBoot) {
             // Set some registers as the BIOS/firmware would
             cp15.write(1, 0, 0, 0x0005707D); // CP15 Control
             cp15.write(9, 1, 0, 0x0300000A); // Data TCM base/size
             cp15.write(9, 1, 1, 0x00000020); // Instruction TCM size
-            memory.write<uint8_t>(0,  0x4000247,   0x03); // WRAMCNT
-            memory.write<uint8_t>(0,  0x4000300,   0x01); // POSTFLG (ARM9)
-            memory.write<uint8_t>(1,  0x4000300,   0x01); // POSTFLG (ARM7)
+            memory.write<uint8_t>(0, 0x4000247, 0x03); // WRAMCNT
+            memory.write<uint8_t>(0, 0x4000300, 0x01); // POSTFLG (ARM9)
+            memory.write<uint8_t>(1, 0x4000300, 0x01); // POSTFLG (ARM7)
             memory.write<uint16_t>(0, 0x4000304, 0x0001); // POWCNT1
             memory.write<uint16_t>(1, 0x4000504, 0x0200); // SOUNDBIAS
 
             // Set some memory values as the BIOS/firmware would
             memory.write<uint32_t>(0, 0x27FF800, 0x00001FC2); // Chip ID 1
             memory.write<uint32_t>(0, 0x27FF804, 0x00001FC2); // Chip ID 2
-            memory.write<uint16_t>(0, 0x27FF850,     0x5835); // ARM7 BIOS CRC
-            memory.write<uint16_t>(0, 0x27FF880,     0x0007); // Message from ARM9 to ARM7
-            memory.write<uint16_t>(0, 0x27FF884,     0x0006); // ARM7 boot task
+            memory.write<uint16_t>(0, 0x27FF850, 0x5835); // ARM7 BIOS CRC
+            memory.write<uint16_t>(0, 0x27FF880, 0x0007); // Message from ARM9 to ARM7
+            memory.write<uint16_t>(0, 0x27FF884, 0x0006); // ARM7 boot task
             memory.write<uint32_t>(0, 0x27FFC00, 0x00001FC2); // Copy of chip ID 1
             memory.write<uint32_t>(0, 0x27FFC04, 0x00001FC2); // Copy of chip ID 2
-            memory.write<uint16_t>(0, 0x27FFC10,     0x5835); // Copy of ARM7 BIOS CRC
-            memory.write<uint16_t>(0, 0x27FFC40,     0x0001); // Boot indicator
+            memory.write<uint16_t>(0, 0x27FFC10, 0x5835); // Copy of ARM7 BIOS CRC
+            memory.write<uint16_t>(0, 0x27FFC40, 0x0001); // Boot indicator
 
             cartridgeNds.directBoot();
             interpreter[0].directBoot();
@@ -142,13 +138,19 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
         }
     }
 
+    // Initialize HLE ARM7 if enabled in DS mode
+    if (!gbaMode && Settings::arm7Hle) {
+        arm7Hle = true;
+        hleArm7.init();
+    }
+
     // Let the core run
     running.store(true);
 }
 
-void Core::saveState(MemFile &file)
-{
+void Core::saveState(MemFile &file) {
     // Write state data to the file
+    fwrite(&arm7Hle, sizeof(arm7Hle), 1, file);
     fwrite(&dsiMode, sizeof(dsiMode), 1, file);
     fwrite(&gbaMode, sizeof(gbaMode), 1, file);
     fwrite(&globalCycles, sizeof(globalCycles), 1, file);
@@ -160,9 +162,9 @@ void Core::saveState(MemFile &file)
         fwrite(&events[i], sizeof(events[i]), 1, file);
 }
 
-void Core::loadState(MemFile &file)
-{
+void Core::loadState(MemFile &file) {
     // Read state data from the file
+    fread(&arm7Hle, sizeof(arm7Hle), 1, file);
     fread(&dsiMode, sizeof(dsiMode), 1, file);
     fread(&gbaMode, sizeof(gbaMode), 1, file);
     fread(&globalCycles, sizeof(globalCycles), 1, file);
@@ -172,18 +174,33 @@ void Core::loadState(MemFile &file)
     uint32_t count;
     SchedEvent event(MAX_TASKS, 0);
     fread(&count, sizeof(count), 1, file);
-    for (uint32_t i = 0; i < count; i++)
-    {
+    for (uint32_t i = 0; i < count; i++) {
         fread(&event, sizeof(event), 1, file);
         events.push_back(event);
     }
 
     // Update the run function pointer
-    runFunc = gbaMode ? &Interpreter::runGbaFrame : (dsiMode ? &Interpreter::runDsiFrame : &Interpreter::runNdsFrame);
+    updateRun();
 }
 
-void Core::resetCycles()
-{
+void Core::updateRun() {
+    // Set the run function based on active CPUs and core mode
+    if (interpreter[0].halted && interpreter[1].halted)
+        runFunc = &Interpreter::runCoreNone;
+    else if (gbaMode)
+        runFunc = &Interpreter::runCoreSingle<true, 0>;
+    else if (dsiMode)
+        runFunc = &Interpreter::runCoreDsi;
+    else if (!interpreter[0].halted && !interpreter[1].halted)
+        runFunc = &Interpreter::runCoreNds;
+    else if (interpreter[0].halted)
+        runFunc = &Interpreter::runCoreSingle<true, 1>;
+    else
+        runFunc = &Interpreter::runCoreSingle<false, 0>;
+    running.store(false);
+}
+
+void Core::resetCycles() {
     // Reset the global cycle count periodically to prevent overflow
     for (size_t i = 0; i < events.size(); i++)
         events[i].cycles -= globalCycles;
@@ -193,20 +210,18 @@ void Core::resetCycles()
     schedule(RESET_CYCLES, 0x7FFFFFFF);
 }
 
-void Core::schedule(SchedTask task, uint32_t cycles)
-{
+void Core::schedule(SchedTask task, uint32_t cycles) {
     // Add a task to the scheduler, sorted by least to most cycles until execution
     SchedEvent event(task, globalCycles + cycles);
     auto it = std::upper_bound(events.cbegin(), events.cend(), event);
     events.insert(it, event);
 }
 
-void Core::enterGbaMode()
-{
+void Core::enterGbaMode() {
     // Switch to GBA mode
     gbaMode = true;
-    runFunc = &Interpreter::runGbaFrame;
-    running.store(false);
+    interpreter[0].halt(2);
+    updateRun();
 
     // Reset the scheduler and schedule initial tasks for GBA mode
     events.clear();
@@ -226,28 +241,29 @@ void Core::enterGbaMode()
     memory.write<uint8_t>(0, 0x4000241, 0x80); // VRAMCNT_B
 
     // Disable HLE BIOS if a real one was loaded
-    if (realGbaBios)
-    {
+    if (realGbaBios) {
         interpreter[1].bios = nullptr;
         return;
     }
 
     // Enable HLE BIOS and boot the GBA ROM directly
-    interpreter[1].bios = &bios[2];
+    interpreter[1].bios = &hleBios[2];
     interpreter[1].directBoot();
     memory.write<uint16_t>(1, 0x4000088, 0x200); // SOUNDBIAS
 }
 
-void Core::endFrame()
-{
+void Core::endFrame() {
     // Break execution at the end of a frame and count it
     running.store(false);
     fpsCount++;
 
+    // Run HLE ARM7 per-frame tasks if enabled
+    if (arm7Hle)
+        hleArm7.runFrame();
+
     // Update the FPS and reset the counter every second
     std::chrono::duration<double> fpsTime = std::chrono::steady_clock::now() - lastFpsTime;
-    if (fpsTime.count() >= 1.0f)
-    {
+    if (fpsTime.count() >= 1.0f) {
         fps = fpsCount;
         fpsCount = 0;
         lastFpsTime = std::chrono::steady_clock::now();

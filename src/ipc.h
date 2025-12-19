@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef IPC_H
-#define IPC_H
+#pragma once
 
 #include <cstdint>
 #include <cstdio>
@@ -28,28 +27,25 @@
 
 class Core;
 
-class Ipc
-{
-    public:
-        Ipc(Core *core): core(core) {}
-        void saveState(MemFile &file);
-        void loadState(MemFile &file);
+class Ipc {
+public:
+    Ipc(Core *core): core(core) {}
+    void saveState(MemFile &file);
+    void loadState(MemFile &file);
 
-        uint16_t readIpcSync(bool arm7) { return ipcSync[arm7]; }
-        uint16_t readIpcFifoCnt(bool arm7) { return ipcFifoCnt[arm7]; }
-        uint32_t readIpcFifoRecv(bool arm7);
+    uint16_t readIpcSync(bool arm7) { return ipcSync[arm7]; }
+    uint16_t readIpcFifoCnt(bool arm7) { return ipcFifoCnt[arm7]; }
+    uint32_t readIpcFifoRecv(bool arm7);
 
-        void writeIpcSync(bool arm7, uint16_t mask, uint16_t value);
-        void writeIpcFifoCnt(bool arm7, uint16_t mask, uint16_t value);
-        void writeIpcFifoSend(bool arm7, uint32_t mask, uint32_t value);
+    void writeIpcSync(bool arm7, uint16_t mask, uint16_t value);
+    void writeIpcFifoCnt(bool arm7, uint16_t mask, uint16_t value);
+    void writeIpcFifoSend(bool arm7, uint32_t mask, uint32_t value);
 
-    private:
-        Core *core;
-        std::deque<uint32_t> fifos[2];
+private:
+    Core *core;
+    std::deque<uint32_t> fifos[2];
 
-        uint16_t ipcSync[2] = {};
-        uint16_t ipcFifoCnt[2] = { 0x0101, 0x0101 };
-        uint32_t ipcFifoRecv[2] = {};
+    uint16_t ipcSync[2] = {};
+    uint16_t ipcFifoCnt[2] = { 0x0101, 0x0101 };
+    uint32_t ipcFifoRecv[2] = {};
 };
-
-#endif // IPC_H

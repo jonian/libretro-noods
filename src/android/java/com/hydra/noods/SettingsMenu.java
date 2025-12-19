@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -36,25 +36,20 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 
-public class SettingsMenu extends AppCompatActivity
-{
+public class SettingsMenu extends AppCompatActivity {
     private SharedPreferences prefs;
     private SettingsFragment fragment;
 
-    public static class SettingsFragment extends PreferenceFragmentCompat
-    {
+    public static class SettingsFragment extends PreferenceFragmentCompat {
         @Override
-        public void onCreatePreferences(Bundle savedInstanceState, String rootKey)
-        {
+        public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             // Load settings from the XML file
             setPreferencesFromResource(R.xml.settings, rootKey);
 
             // Request the microphone permission if not granted when the setting is enabled
-            findPreference("mic_enable").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener()
-            {
+            findPreference("mic_enable").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
-                public boolean onPreferenceClick(Preference pref)
-                {
+                public boolean onPreferenceClick(Preference pref) {
                     if (!((SwitchPreference)pref).isChecked()) return true;
                     String perm = android.Manifest.permission.RECORD_AUDIO;
                     if (ContextCompat.checkSelfPermission(getActivity(), perm) != PackageManager.PERMISSION_GRANTED)
@@ -66,8 +61,7 @@ public class SettingsMenu extends AppCompatActivity
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults)
-    {
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         // Disable the microphone setting if permission wasn't granted
         int perm = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
         if (perm != PackageManager.PERMISSION_GRANTED)
@@ -75,21 +69,26 @@ public class SettingsMenu extends AppCompatActivity
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         // Load the settings from the core
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putBoolean("direct_boot", (getDirectBoot() == 0) ? false : true);
-        editor.putBoolean("fps_limiter", (getFpsLimiter() == 0) ? false : true);
-        editor.putBoolean("mic_enable", (getMicEnable() == 0) ? false : true);
         editor.putBoolean("rom_in_ram", (getRomInRam() == 0) ? false : true);
+        editor.putBoolean("fps_limiter", (getFpsLimiter() == 0) ? false : true);
+        editor.putBoolean("show_fps_counter", (getShowFpsCounter() == 0) ? false : true);
+        editor.putString("frameskip", Integer.toString(getFrameskip()));
         editor.putBoolean("threaded_2d", (getThreaded2D() == 0) ? false : true);
         editor.putString("threaded_3d", Integer.toString(getThreaded3D()));
         editor.putBoolean("high_res_3d", (getHighRes3D() == 0) ? false : true);
-        editor.putBoolean("show_fps_counter", (getShowFpsCounter() == 0) ? false : true);
+        editor.putBoolean("screen_ghost", (getScreenGhost() == 0) ? false : true);
+        editor.putBoolean("emulate_audio", (getEmulateAudio() == 0) ? false : true);
+        editor.putBoolean("audio_16_bit", (getAudio16Bit() == 0) ? false : true);
+        editor.putBoolean("mic_enable", (getMicEnable() == 0) ? false : true);
+        editor.putBoolean("arm7_hle", (getArm7Hle() == 0) ? false : true);
+        editor.putBoolean("dsi_mode", (getDsiMode() == 0) ? false : true);
         editor.putBoolean("saves_folder", (getSavesFolder() == 0) ? false : true);
         editor.putBoolean("states_folder", (getStatesFolder() == 0) ? false : true);
         editor.putBoolean("cheats_folder", (getCheatsFolder() == 0) ? false : true);
@@ -102,7 +101,6 @@ public class SettingsMenu extends AppCompatActivity
         editor.putString("aspect_ratio", Integer.toString(getAspectRatio()));
         editor.putBoolean("integer_scale", (getIntegerScale() == 0) ? false : true);
         editor.putBoolean("gba_crop", (getGbaCrop() == 0) ? false : true);
-        editor.putBoolean("screen_ghost", (getScreenGhost() == 0) ? false : true);
         editor.putInt("button_scale", getButtonScale());
         editor.putInt("button_spacing", getButtonSpacing());
         editor.putInt("vibrate_strength", getVibrateStrength());
@@ -116,8 +114,7 @@ public class SettingsMenu extends AppCompatActivity
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu)
-    {
+    public boolean onCreateOptionsMenu(Menu menu) {
         // Apply the theme filter to all icons
         getMenuInflater().inflate(R.menu.settings_menu, menu);
         for (int i = 0; i < menu.size(); i++)
@@ -126,30 +123,33 @@ public class SettingsMenu extends AppCompatActivity
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        switch (item.getItemId())
-        {
-            case R.id.bindings_action:
-                // Open the input bindings menu
-                startActivity(new Intent(this, BindingsMenu.class));
-                return true;
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+        case R.id.bindings_action:
+            // Open the input bindings menu
+            startActivity(new Intent(this, BindingsMenu.class));
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
     @Override
-    public void onBackPressed()
-    {
+    public void onBackPressed() {
         // Save the settings to the core
         setDirectBoot(prefs.getBoolean("direct_boot", true) ? 1 : 0);
-        setFpsLimiter(prefs.getBoolean("fps_limiter", true) ? 1 : 0);
-        setMicEnable(prefs.getBoolean("mic_enable", false) ? 1 : 0);
         setRomInRam(prefs.getBoolean("rom_in_ram", false) ? 1 : 0);
+        setFpsLimiter(prefs.getBoolean("fps_limiter", true) ? 1 : 0);
+        setShowFpsCounter(prefs.getBoolean("show_fps_counter", false) ? 1 : 0);
+        setFrameskip(Integer.parseInt(prefs.getString("frameskip", "0")));
         setThreaded2D(prefs.getBoolean("threaded_2d", true) ? 1 : 0);
         setThreaded3D(Integer.parseInt(prefs.getString("threaded_3d", "1")));
         setHighRes3D(prefs.getBoolean("high_res_3d", false) ? 1 : 0);
-        setShowFpsCounter(prefs.getBoolean("show_fps_counter", false) ? 1 : 0);
+        setScreenGhost(prefs.getBoolean("screen_ghost", false) ? 1 : 0);
+        setEmulateAudio(prefs.getBoolean("emulate_audio", true) ? 1 : 0);
+        setAudio16Bit(prefs.getBoolean("audio_16_bit", true) ? 1 : 0);
+        setMicEnable(prefs.getBoolean("mic_enable", false) ? 1 : 0);
+        setArm7Hle(prefs.getBoolean("arm7_hle", false) ? 1 : 0);
+        setDsiMode(prefs.getBoolean("dsi_mode", false) ? 1 : 0);
         setSavesFolder(prefs.getBoolean("saves_folder", false) ? 1 : 0);
         setStatesFolder(prefs.getBoolean("states_folder", true) ? 1 : 0);
         setCheatsFolder(prefs.getBoolean("cheats_folder", true) ? 1 : 0);
@@ -162,7 +162,6 @@ public class SettingsMenu extends AppCompatActivity
         setAspectRatio(Integer.parseInt(prefs.getString("aspect_ratio", "0")));
         setIntegerScale(prefs.getBoolean("integer_scale", false) ? 1 : 0);
         setGbaCrop(prefs.getBoolean("gba_crop", true) ? 1 : 0);
-        setScreenGhost(prefs.getBoolean("screen_ghost", false) ? 1 : 0);
         setButtonScale(prefs.getInt("button_scale", 5));
         setButtonSpacing(prefs.getInt("button_spacing", 10));
         setVibrateStrength(prefs.getInt("vibrate_strength", 1));
@@ -173,13 +172,19 @@ public class SettingsMenu extends AppCompatActivity
     }
 
     public static native int getDirectBoot();
-    public static native int getFpsLimiter();
-    public static native int getMicEnable();
     public static native int getRomInRam();
+    public static native int getFpsLimiter();
+    public static native int getShowFpsCounter();
+    public static native int getFrameskip();
     public static native int getThreaded2D();
     public static native int getThreaded3D();
     public static native int getHighRes3D();
-    public static native int getShowFpsCounter();
+    public static native int getScreenGhost();
+    public static native int getEmulateAudio();
+    public static native int getAudio16Bit();
+    public static native int getMicEnable();
+    public static native int getArm7Hle();
+    public static native int getDsiMode();
     public static native int getSavesFolder();
     public static native int getStatesFolder();
     public static native int getCheatsFolder();
@@ -192,18 +197,23 @@ public class SettingsMenu extends AppCompatActivity
     public static native int getAspectRatio();
     public static native int getIntegerScale();
     public static native int getGbaCrop();
-    public static native int getScreenGhost();
     public static native int getButtonScale();
     public static native int getButtonSpacing();
     public static native int getVibrateStrength();
     public static native void setDirectBoot(int value);
-    public static native void setFpsLimiter(int value);
-    public static native void setMicEnable(int value);
     public static native void setRomInRam(int value);
+    public static native void setFpsLimiter(int value);
+    public static native void setShowFpsCounter(int value);
+    public static native void setFrameskip(int value);
     public static native void setThreaded2D(int value);
     public static native void setThreaded3D(int value);
     public static native void setHighRes3D(int value);
-    public static native void setShowFpsCounter(int value);
+    public static native void setScreenGhost(int value);
+    public static native void setEmulateAudio(int value);
+    public static native void setAudio16Bit(int value);
+    public static native void setMicEnable(int value);
+    public static native void setArm7Hle(int value);
+    public static native void setDsiMode(int value);
     public static native void setSavesFolder(int value);
     public static native void setStatesFolder(int value);
     public static native void setCheatsFolder(int value);
@@ -216,7 +226,6 @@ public class SettingsMenu extends AppCompatActivity
     public static native void setAspectRatio(int value);
     public static native void setIntegerScale(int value);
     public static native void setGbaCrop(int value);
-    public static native void setScreenGhost(int value);
     public static native void setButtonScale(int value);
     public static native void setButtonSpacing(int value);
     public static native void setVibrateStrength(int value);

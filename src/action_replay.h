@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef ACTION_REPLAY_H
-#define ACTION_REPLAY_H
+#pragma once
 
 #include <cstdint>
 #include <mutex>
@@ -27,33 +26,29 @@
 
 class Core;
 
-struct ARCheat
-{
+struct ARCheat {
     std::string name;
     std::vector<uint32_t> code;
     bool enabled;
 };
 
-class ActionReplay
-{
-    public:
-        std::vector<ARCheat> cheats;
+class ActionReplay {
+public:
+    std::vector<ARCheat> cheats;
 
-        ActionReplay(Core *core): core(core) {}
-        void setPath(std::string path);
-        void setFd(int fd);
+    ActionReplay(Core *core): core(core) {}
+    void setPath(std::string path);
+    void setFd(int fd);
 
-        bool loadCheats();
-        bool saveCheats();
-        void applyCheats();
+    bool loadCheats();
+    bool saveCheats();
+    void applyCheats();
 
-    private:
-        Core *core;
-        std::mutex mutex;
-        std::string path;
-        int fd = -1;
+private:
+    Core *core;
+    std::mutex mutex;
+    std::string path;
+    int fd = -1;
 
-        FILE *openFile(const char *mode);
+    FILE *openFile(const char *mode);
 };
-
-#endif // ACTION_REPLAY_H

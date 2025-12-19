@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -28,8 +28,7 @@
 
 #define GYRO_TOUCH_RANGE 0.08f
 
-struct VertexData
-{
+struct VertexData {
     float x, y;
     float s, t;
     float r, g, b;
@@ -38,14 +37,15 @@ struct VertexData
         x(x), y(y), s(s), t(t), r(r), g(g), b(b) {}
 };
 
-struct Texture
-{
+struct Texture {
     GLuint tex;
     int width, height;
 
     Texture(int width, int height):
         width(width), height(height) {}
 };
+
+ClkrstSession cpuSession;
 
 EGLDisplay display;
 EGLContext context;
@@ -65,7 +65,8 @@ AudioOutBuffer audioBuffers[2];
 AudioOutBuffer *releasedBuffer;
 uint32_t *audioData[2];
 uint32_t count;
-bool playing = true;
+bool running = true;
+bool playing = false;
 
 const char *vertexShader =
 R"(
@@ -78,8 +79,7 @@ R"(
     out vec2 vtxTexCoord;
     out vec3 vtxColor;
 
-    void main()
-    {
+    void main() {
         gl_Position = vec4(-1.0 + inPos.x / 640, 1.0 - inPos.y / 360, 0.0, 1.0);
         vtxTexCoord = inTexCoord;
         vtxColor = inColor;
@@ -96,29 +96,25 @@ R"(
     out vec4 fragColor;
     uniform sampler2D texDiffuse;
 
-    void main()
-    {
+    void main() {
         fragColor = texture(texDiffuse, vtxTexCoord) * vec4(vtxColor.x / 255, vtxColor.y / 255, vtxColor.z / 255, 1.0);
     }
 )";
 
-uint32_t ConsoleUI::defaultKeys[]
-{
+uint32_t ConsoleUI::defaultKeys[] {
     HidNpadButton_A, HidNpadButton_B, HidNpadButton_Minus, HidNpadButton_Plus,
     HidNpadButton_AnyRight, HidNpadButton_AnyLeft, HidNpadButton_AnyUp, HidNpadButton_AnyDown,
     HidNpadButton_ZR, HidNpadButton_ZL, HidNpadButton_X, HidNpadButton_Y,
     HidNpadButton_L | HidNpadButton_R
 };
 
-const char *ConsoleUI::keyNames[]
-{
+const char *ConsoleUI::keyNames[] {
     "A", "B", "X", "Y", "L Stick", "R Stick", "L", "R",
     "ZL", "ZR", "Plus", "Minus", "Left", "Up", "Right", "Down",
     "LS Left", "LS Up", "LS Right", "LS Down", "RS Left", "RS Up", "RS Right", "RS Down"
 };
 
-void ConsoleUI::startFrame(uint32_t color)
-{
+void ConsoleUI::startFrame(uint32_t color) {
     // Convert the clear color to floats
     float r = float(color & 0xFF) / 0xFF;
     float g = float((color >> 8) & 0xFF) / 0xFF;
@@ -130,16 +126,20 @@ void ConsoleUI::startFrame(uint32_t color)
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void ConsoleUI::endFrame()
-{
+void ConsoleUI::endFrame() {
     // Finish and display a frame
     glFinish();
     eglSwapBuffers(display, surface);
     scanned = false;
+
+    // Check if overclock should be reapplied, in case of pressing home for example
+    uint32_t rate;
+    clkrstGetClockRate(&cpuSession, &rate);
+    if (rate != 1785000000)
+        clkrstSetClockRate(&cpuSession, 1785000000);
 }
 
-void *ConsoleUI::createTexture(uint32_t *data, int width, int height)
-{
+void *ConsoleUI::createTexture(uint32_t *data, int width, int height) {
     // Create a new texture and copy data to it
     Texture *texture = new Texture(width, height);
     glGenTextures(1, &texture->tex);
@@ -150,16 +150,14 @@ void *ConsoleUI::createTexture(uint32_t *data, int width, int height)
     return texture;
 }
 
-void ConsoleUI::destroyTexture(void *texture)
-{
+void ConsoleUI::destroyTexture(void *texture) {
     // Clean up a texture
     glDeleteTextures(1, &((Texture*)texture)->tex);
     delete (Texture*)texture;
 }
 
 void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float th,
-    float x, float y, float w, float h, bool filter, int rotation, uint32_t color)
-{
+    float x, float y, float w, float h, bool filter, int rotation, uint32_t color) {
     // Convert texture coordinates to floats
     float s1 = tx / ((Texture*)texture)->width;
     float t1 = ty / ((Texture*)texture)->height;
@@ -177,8 +175,7 @@ void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float t
     int o = offsets[rotation];
 
     // Define vertex data to upload
-    VertexData vertices[] =
-    {
+    VertexData vertices[] = {
         VertexData(x + w, y + h, texCoords[(o + 0) & 0x7], texCoords[(o + 1) & 0x7], r, g, b),
         VertexData(x + 0, y + h, texCoords[(o + 2) & 0x7], texCoords[(o + 3) & 0x7], r, g, b),
         VertexData(x + 0, y + 0, texCoords[(o + 4) & 0x7], texCoords[(o + 5) & 0x7], r, g, b),
@@ -193,11 +190,9 @@ void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float t
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
-uint32_t ConsoleUI::getInputHeld()
-{
+uint32_t ConsoleUI::getInputHeld() {
     // Scan for input once per frame
-    if (!scanned)
-    {
+    if (!scanned) {
         padUpdate(&pad);
         scanned = true;
     }
@@ -208,30 +203,46 @@ uint32_t ConsoleUI::getInputHeld()
     return value;
 }
 
-MenuTouch ConsoleUI::getInputTouch()
-{
+MenuTouch ConsoleUI::getInputTouch() {
     // Scan for touch input
     HidTouchScreenState touch;
     hidGetTouchScreenStates(&touch, 1);
     return MenuTouch(touch.count > 0, touch.touches[0].x, touch.touches[0].y);
 }
 
-void outputAudio()
-{
-    while (playing)
-    {
+void outputAudio() {
+    while (running && appletMainLoop()) {
         // Refill the audio buffers until stopped
+        if (!playing) continue;
         audoutWaitPlayFinish(&releasedBuffer, &count, UINT64_MAX);
-        for (uint32_t i = 0; i < count; i++)
-        {
+        for (uint32_t i = 0; i < count; i++) {
             ConsoleUI::fillAudioBuffer((uint32_t*)releasedBuffer[i].buffer, 1024, 48000);
             audoutAppendAudioOutBuffer(&releasedBuffer[i]);
         }
     }
 }
 
-MenuTouch gyroTouch()
-{
+void suspendAudio(AppletHookType hook, void *param) {
+    // Verify hook type and get the focus state
+    if (hook != AppletHookType_OnFocusState) return;
+    AppletFocusState state = appletGetFocusState();
+
+    // Start/stop audio output on suspend/resume to avoid it messing up
+    if (state == AppletFocusState_InFocus && !playing) {
+        audoutInitialize();
+        audoutStartAudioOut();
+        for (int i = 0; i < 2; i++)
+            audoutAppendAudioOutBuffer(&audioBuffers[i]);
+        playing = true;
+    }
+    else if (state != AppletFocusState_InFocus && playing) {
+        playing = false;
+        audoutStopAudioOut();
+        audoutExit();
+    }
+}
+
+MenuTouch gyroTouch() {
     // Toggle gyro touch mode if a stick is clicked while docked
     if (appletGetOperationMode() == AppletOperationMode_Console && !ConsoleUI::gbaMode)
         toggle ^= (padGetButtonsDown(&pad) & (HidNpadButton_StickL | HidNpadButton_StickR));
@@ -239,15 +250,13 @@ MenuTouch gyroTouch()
         toggle = 0;
 
     // Do nothing if not in gyro touch mode
-    if (!toggle)
-    {
+    if (!toggle) {
         pointerMode = 0;
         return MenuTouch(false, 0, 0);
     }
 
     // Set the pointer mode depending on which stick was pressed
-    if (pointerMode == 0)
-    {
+    if (pointerMode == 0) {
         pointerMode = (toggle & HidNpadButton_StickL) ? 1 : 2;
         initAngleDirty = true;
     }
@@ -258,8 +267,7 @@ MenuTouch gyroTouch()
     hidGetSixAxisSensorStates(sensors[joycon ? pointerMode : 0], &sensorState, 1);
 
     // Save the initial angle to be used as a center position
-    if (initAngleDirty)
-    {
+    if (initAngleDirty) {
         initAngleX = sensorState.angle.x;
         initAngleZ = sensorState.angle.z;
         initAngleDirty = false;
@@ -286,10 +294,8 @@ MenuTouch gyroTouch()
     return MenuTouch(touched, screenX, screenY);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     // Overclock the Switch CPU
-    ClkrstSession cpuSession;
     clkrstInitialize();
     clkrstOpenSession(&cpuSession, PcvModuleId_CpuBus, 0);
     clkrstSetClockRate(&cpuSession, 1785000000);
@@ -337,10 +343,8 @@ int main(int argc, char **argv)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // Initialize audio and buffers
-    audoutInitialize();
-    for (int i = 0; i < 2; i++)
-    {
+    // Initialize audio buffers
+    for (int i = 0; i < 2; i++) {
         int size = 1024 * sizeof(uint32_t);
         audioData[i] = (uint32_t*)memalign(0x1000, size);
         memset(audioData[i], 0, size);
@@ -349,11 +353,12 @@ int main(int argc, char **argv)
         audioBuffers[i].buffer_size = size;
         audioBuffers[i].data_size = size;
         audioBuffers[i].data_offset = 0;
-        audoutAppendAudioOutBuffer(&audioBuffers[i]);
     }
 
-    // Start audio output
-    audoutStartAudioOut();
+    // Hook up the suspend handler and start the audio thread
+    AppletHookCookie cookie;
+    appletHook(&cookie, suspendAudio, nullptr);
+    appletSetFocusHandlingMode(AppletFocusHandlingMode_NoSuspend);
     std::thread audioThread(outputAudio);
 
     // Initialize input
@@ -375,8 +380,7 @@ int main(int argc, char **argv)
     setExit();
 
     // Set the language for the generated firmware
-    switch (lang)
-    {
+    switch (lang) {
         case SetLanguage_JA: Spi::setLanguage(LG_JAPANESE); break;
         case SetLanguage_FRCA:
         case SetLanguage_FR: Spi::setLanguage(LG_FRENCH); break;
@@ -394,7 +398,7 @@ int main(int argc, char **argv)
 
     // Run the emulator until it exits
     ConsoleUI::mainLoop(gyroTouch);
-    playing = false;
+    running = false;
     audioThread.join();
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroyContext(display, context);

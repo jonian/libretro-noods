@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef CARTRIDGE_H
-#define CARTRIDGE_H
+#pragma once
 
 #include <cstdint>
 #include <mutex>
@@ -30,8 +29,7 @@
 
 class Core;
 
-enum NdsCmdMode
-{
+enum NdsCmdMode {
     CMD_NONE = 0,
     CMD_HEADER,
     CMD_CHIP,
@@ -39,135 +37,128 @@ enum NdsCmdMode
     CMD_DATA
 };
 
-class Cartridge
-{
-    public:
-        Cartridge(Core *core): core(core) {}
-        ~Cartridge();
+class Cartridge {
+public:
+    Cartridge(Core *core): core(core) {}
+    ~Cartridge();
 
-        bool setRom(std::string romPath, int romFd = -1, int saveFd = -1, int stateFd = -1, int cheatFd = -1);
-        void writeSave();
+    bool setRom(std::string romPath, int romFd = -1, int saveFd = -1, int stateFd = -1, int cheatFd = -1);
+    void writeSave();
 
-        void trimRom();
-        void resizeSave(int newSize, bool dirty = true);
+    void trimRom();
+    void resizeSave(int newSize, bool dirty = true);
 
-        int getRomSize()  { return romSize;  }
-        int getSaveSize() { return saveSize; }
+    int getRomSize() { return romSize; }
+    int getSaveSize() { return saveSize; }
 
-    protected:
-        Core *core;
+protected:
+    Core *core;
 
-        FILE *romFile = nullptr;
-        uint8_t *rom = nullptr, *save = nullptr;
-        int romSize = 0, saveSize = -1;
-        bool saveDirty = false;
-        std::mutex mutex;
+    FILE *romFile = nullptr;
+    uint8_t *rom = nullptr, *save = nullptr;
+    int romSize = 0, saveSize = -1;
+    bool saveDirty = false;
+    std::mutex mutex;
 
-        std::vector<uint32_t> saveSizes;
-        uint32_t romMask = 0;
+    std::vector<uint32_t> saveSizes;
+    uint32_t romMask = 0;
 
-        virtual bool loadRom();
-        void loadRomSection(size_t offset, size_t size);
+    virtual bool loadRom();
+    void loadRomSection(size_t offset, size_t size);
 
-    private:
-        std::string romPath, savePath;
-        int romFd = -1, saveFd = -1;
+private:
+    std::string romPath, savePath;
+    int romFd = -1, saveFd = -1;
 };
 
-class CartridgeNds: public Cartridge
-{
-    public:
-        CartridgeNds(Core *core): Cartridge(core) {}
-        void saveState(MemFile &file);
-        void loadState(MemFile &file);
+class CartridgeNds: public Cartridge {
+public:
+    CartridgeNds(Core *core): Cartridge(core) {}
+    void saveState(MemFile &file);
+    void loadState(MemFile &file);
 
-        void directBoot();
-        void wordReady(bool cpu);
+    void directBoot();
+    void wordReady(bool cpu);
 
-        uint16_t readAuxSpiCnt(bool cpu)  { return auxSpiCnt[cpu];  }
-        uint8_t  readAuxSpiData(bool cpu) { return auxSpiData[cpu]; }
-        uint32_t readRomCtrl(bool cpu)    { return romCtrl[cpu];    }
-        uint32_t readRomDataIn(bool cpu);
+    uint16_t readAuxSpiCnt(bool cpu) { return auxSpiCnt[cpu]; }
+    uint8_t readAuxSpiData(bool cpu) { return auxSpiData[cpu]; }
+    uint32_t readRomCtrl(bool cpu) { return romCtrl[cpu]; }
+    uint32_t readRomDataIn(bool cpu);
 
-        void writeAuxSpiCnt(bool cpu, uint16_t mask, uint16_t value);
-        void writeAuxSpiData(bool cpu, uint8_t value);
-        void writeRomCtrl(bool cpu, uint32_t mask, uint32_t value);
-        void writeRomCmdOutL(bool cpu, uint32_t mask, uint32_t value);
-        void writeRomCmdOutH(bool cpu, uint32_t mask, uint32_t value);
+    void writeAuxSpiCnt(bool cpu, uint16_t mask, uint16_t value);
+    void writeAuxSpiData(bool cpu, uint8_t value);
+    void writeRomCtrl(bool cpu, uint32_t mask, uint32_t value);
+    void writeRomCmdOutL(bool cpu, uint32_t mask, uint32_t value);
+    void writeRomCmdOutH(bool cpu, uint32_t mask, uint32_t value);
 
-    private:
-        uint32_t romCode = 0;
-        bool romEncrypted = false;
-        NdsCmdMode cmdMode = CMD_NONE;
+private:
+    uint32_t romCode = 0;
+    bool romEncrypted = false;
+    NdsCmdMode cmdMode = CMD_NONE;
 
-        uint32_t encTable[0x412] = {};
-        uint32_t encCode[3] = {};
+    uint32_t encTable[0x412] = {};
+    uint32_t encCode[3] = {};
 
-        uint32_t romAddrReal[2] = {}, romAddrVirt[2] = {};
-        uint16_t blockSize[2] = {}, readCount[2] = {};
-        uint32_t wordCycles[2] = {};
-        bool encrypted[2] = {};
+    uint32_t romAddrReal[2] = {}, romAddrVirt[2] = {};
+    uint16_t blockSize[2] = {}, readCount[2] = {};
+    uint32_t wordCycles[2] = {};
+    bool encrypted[2] = {};
 
-        uint8_t auxCommand[2] = {};
-        uint32_t auxAddress[2] = {};
-        uint32_t auxWriteCount[2] = {};
+    uint8_t auxCommand[2] = {};
+    uint32_t auxAddress[2] = {};
+    uint32_t auxWriteCount[2] = {};
 
-        uint16_t auxSpiCnt[2] = {};
-        uint8_t auxSpiData[2] = {};
-        uint32_t romCtrl[2] = {};
-        uint64_t romCmdOut[2] = {};
+    uint16_t auxSpiCnt[2] = {};
+    uint8_t auxSpiData[2] = {};
+    uint32_t romCtrl[2] = {};
+    uint64_t romCmdOut[2] = {};
 
-        virtual bool loadRom();
+    virtual bool loadRom();
 
-        uint64_t encrypt64(uint64_t value);
-        uint64_t decrypt64(uint64_t value);
-        void initKeycode(int level);
-        void applyKeycode();
-        void detectSaveSize();
+    uint64_t encrypt64(uint64_t value);
+    uint64_t decrypt64(uint64_t value);
+    void initKeycode(int level);
+    void applyKeycode();
+    void detectSaveSize();
 };
 
 #ifndef __LIBRETRO__
 FORCE_INLINE void CartridgeNds::detectSaveSize() {}
 #endif
 
-class CartridgeGba: public Cartridge
-{
-    public:
-        CartridgeGba(Core *core): Cartridge(core) {}
-        void saveState(MemFile &file);
-        void loadState(MemFile &file);
+class CartridgeGba: public Cartridge {
+public:
+    CartridgeGba(Core *core): Cartridge(core) {}
+    void saveState(MemFile &file);
+    void loadState(MemFile &file);
 
-        uint8_t *getRom(uint32_t address);
-        bool isEeprom(uint32_t address);
+    uint8_t *getRom(uint32_t address);
+    bool isEeprom(uint32_t address);
 
-        uint8_t eepromRead();
-        void eepromWrite(uint8_t value);
+    uint8_t eepromRead();
+    void eepromWrite(uint8_t value);
 
-        uint8_t sramRead(uint32_t address);
-        void sramWrite(uint32_t address, uint8_t value);
+    uint8_t sramRead(uint32_t address);
+    void sramWrite(uint32_t address, uint8_t value);
 
-    private:
-        uint8_t eepromCount = 0;
-        uint16_t eepromCmd = 0;
-        uint64_t eepromData = 0;
-        bool eepromDone = false;
+private:
+    uint8_t eepromCount = 0;
+    uint16_t eepromCmd = 0;
+    uint64_t eepromData = 0;
+    bool eepromDone = false;
 
-        uint8_t flashCmd = 0;
-        bool bankSwap = false;
-        bool flashErase = false;
+    uint8_t flashCmd = 0;
+    bool bankSwap = false;
+    bool flashErase = false;
 
-        bool findString(std::string string);
-        virtual bool loadRom();
+    bool findString(std::string string);
+    virtual bool loadRom();
 };
 
-FORCE_INLINE uint8_t *CartridgeGba::getRom(uint32_t address)
-{
+FORCE_INLINE uint8_t *CartridgeGba::getRom(uint32_t address) {
     return ((address &= romMask) < romSize) ? &rom[address] : nullptr;
 }
 
-FORCE_INLINE bool CartridgeGba::isEeprom(uint32_t address)
-{
+FORCE_INLINE bool CartridgeGba::isEeprom(uint32_t address) {
     return (saveSize == -1 || saveSize == 0x200 || saveSize == 0x2000) && (romSize <= 0x1000000 || address >= 0x0DFFFF00);
 }
-
-#endif // CARTRIDGE_H
