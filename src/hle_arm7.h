@@ -29,8 +29,8 @@ public:
     HleArm7(Core *core): core(core) {}
     void init();
 
-    void saveState(FILE *file);
-    void loadState(FILE *file);
+    void saveState(MemFile &file);
+    void loadState(MemFile &file);
 
     void ipcSync(uint8_t value);
     void ipcFifo(uint32_t value);

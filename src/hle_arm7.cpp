@@ -26,13 +26,13 @@ void HleArm7::init() {
     core->ipc.writeIpcFifoCnt(1, -1, 0x8000);
 }
 
-void HleArm7::saveState(FILE *file) {
+void HleArm7::saveState(MemFile &file) {
     // Write state data to the file
     fwrite(&inited, 1, sizeof(inited), file);
     fwrite(&autoTouch, 1, sizeof(autoTouch), file);
 }
 
-void HleArm7::loadState(FILE *file) {
+void HleArm7::loadState(MemFile &file) {
     // Read state data from the file
     fread(&inited, 1, sizeof(inited), file);
     fread(&autoTouch, 1, sizeof(autoTouch), file);

@@ -292,8 +292,10 @@ static void initConfig()
   static const retro_variable values[] = {
     { "noods_directBoot", "Direct Boot; enabled|disabled" },
     { "noods_fpsLimiter", "FPS Limiter; disabled|enabled" },
+    { "noods_frameskip", "Frameskip; disabled|enabled" },
     { "noods_romInRam", "Keep ROM in RAM; disabled|enabled" },
     { "noods_dsiMode", "DSi Homebrew Mode; disabled|enabled" },
+    { "noods_arm7Hle", "ARM7 HLE; disabled|enabled" },
     { "noods_threaded2D", "Threaded 2D; enabled|disabled" },
     { "noods_threaded3D", "Threaded 3D; 1 Thread|2 Threads|3 Threads|4 Threads|Disabled" },
     { "noods_highRes3D", "High Resolution 3D; disabled|enabled" },
@@ -305,6 +307,8 @@ static void initConfig()
     { "noods_gbaCrop", "Crop GBA Screen; enabled|disabled" },
     { "noods_screenFilter", "Screen Filter; Nearest|Upscaled|Linear" },
     { "noods_screenGhost", "Simulate Ghosting; disabled|enabled" },
+    { "noods_emulateAudio", "Emulate Audio; disabled|enabled" },
+    { "noods_audio16Bit", "Audio 16Bit; disabled|enabled" },
     { "noods_swapScreenMode", "Swap Screen Mode; Toggle|Hold" },
     { "noods_touchMode", "Touch Mode; Auto|Pointer|Joystick|None" },
     { "noods_touchCursor", "Show Touch Cursor; enabled|disabled" },
@@ -328,13 +332,17 @@ static void updateConfig()
 
   Settings::directBoot = fetchVariableBool("noods_directBoot", true);
   Settings::fpsLimiter = fetchVariableBool("noods_fpsLimiter", false);
+  Settings::frameskip = fetchVariableBool("noods_frameskip", false);
   Settings::romInRam = fetchVariableBool("noods_romInRam", false);
   Settings::dsiMode = fetchVariableBool("noods_dsiMode", false);
+  Settings::arm7Hle = fetchVariableBool("noods_arm7Hle", false);
   Settings::threaded2D = fetchVariableBool("noods_threaded2D", true);
   Settings::threaded3D = fetchVariableEnum("noods_threaded3D", {"Disabled", "1 Thread", "2 Threads", "3 Threads", "4 Threads"}, 1);
   Settings::highRes3D = fetchVariableBool("noods_highRes3D", false);
   Settings::screenFilter = fetchVariableEnum("noods_screenFilter", {"Nearest", "Upscaled", "Linear"});
   Settings::screenGhost = fetchVariableBool("noods_screenGhost", false);
+  Settings::emulateAudio = fetchVariableBool("noods_emulateAudio", false);
+  Settings::audio16Bit = fetchVariableBool("noods_audio16Bit", false);
 
   micInputMode = fetchVariable("noods_micInputMode", "Silence");
   micButtonMode = fetchVariable("noods_micButtonMode", "Toggle");
@@ -1035,7 +1043,7 @@ void retro_run(void)
     }
   }
 
-  core->runFrame();
+  core->runCore();
 
   renderVideo();
   renderAudio();

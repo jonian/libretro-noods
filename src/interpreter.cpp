@@ -146,11 +146,11 @@ void Interpreter::runCoreNds(Core &core) {
     while (core.running.exchange(true)) {
         // Run the ARM9 and half-speed ARM7 until the next scheduled task
         while (core.events[0].cycles > core.globalCycles) {
-            if (core.globalCycles >= arm9.cycles)
+            if (!arm9.halted && core.globalCycles >= arm9.cycles)
                 arm9.cycles = core.globalCycles + arm9.runOpcode();
-            if (core.globalCycles >= arm7.cycles)
+            if (!arm7.halted && core.globalCycles >= arm7.cycles)
                 arm7.cycles = core.globalCycles + (arm7.runOpcode() << 1);
-            core.globalCycles = std::min<uint32_t>(arm9.cycles, arm7.cycles);
+            core.globalCycles = std::min<uint32_t>((arm9.halted ? -1 : arm9.cycles), (arm7.halted ? -1 : arm7.cycles));
         }
 
         // Jump to the next task and run all that are scheduled now
@@ -170,16 +170,16 @@ void Interpreter::runCoreDsi(Core &core) {
         // Run both CPUs until the next scheduled task
         while (core.events[0].cycles > core.globalCycles) {
             // Run the ARM9 twice as fast as usual
-            if (core.globalCycles >= arm9.cycles) {
+            if (!arm9.halted && core.globalCycles >= arm9.cycles) {
                 int cycles = arm9.runOpcode() + arm9.dsiCycle;
                 arm9.cycles = core.globalCycles + (cycles >> 1);
                 arm9.dsiCycle = (cycles & 0x1);
             }
 
             // Run the ARM7 at half speed and advance to the next opcode cycle
-            if (core.globalCycles >= arm7.cycles)
+            if (!arm7.halted && core.globalCycles >= arm7.cycles)
                 arm7.cycles = core.globalCycles + (arm7.runOpcode() << 1);
-            core.globalCycles = std::min<uint32_t>(arm9.cycles, arm7.cycles);
+            core.globalCycles = std::min<uint32_t>((arm9.halted ? -1 : arm9.cycles), (arm7.halted ? -1 : arm7.cycles));
         }
 
         // Jump to the next task and run all that are scheduled now
@@ -237,18 +237,22 @@ void Interpreter::halt(int bit) {
     // Set a halt bit and disable the CPU if newly halted
     bool before = halted;
     halted |= BIT(bit);
+#ifndef __LIBRETRO__
     if (before) return;
     core->schedule(UPDATE_RUN, 0);
     cycles = 0xFFFFFFFF;
+#endif
 }
 
 void Interpreter::unhalt(int bit) {
     // Clear a halt bit and enable the CPU if newly halted
     bool before = halted;
     halted &= ~BIT(bit);
+#ifndef __LIBRETRO__
     if (!before) return;
     core->schedule(UPDATE_RUN, 0);
     cycles = 0;
+#endif
 }
 
 void Interpreter::sendInterrupt(int bit) {

@@ -67,6 +67,10 @@ public:
     template <typename T> T read(bool arm7, uint32_t address, bool tcm = true);
     template <typename T> void write(bool arm7, uint32_t address, T value, bool tcm = true);
 
+#ifdef __LIBRETRO__
+    uint8_t *getRam() { return ram; }
+#endif
+
 private:
     Core *core;
     uint32_t gbaBiosAddr = 0;

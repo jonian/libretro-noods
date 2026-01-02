@@ -3,7 +3,7 @@
 #include <cstring>
 
 const char* SaveState::stateTag = "NDSR";
-const uint32_t SaveState::stateVersion = 2;
+const uint32_t SaveState::stateVersion = 3;
 
 bool SaveState::check(const void* data, size_t& size)
 {
@@ -37,9 +37,6 @@ bool SaveState::save(void* data, size_t& size)
 
   // Save the state of every component
   core->memory.saveState(file);
-  core->bios[0].saveState(file);
-  core->bios[1].saveState(file);
-  core->bios[2].saveState(file);
   core->cartridgeGba.saveState(file);
   core->cartridgeNds.saveState(file);
   core->cp15.saveState(file);
@@ -51,6 +48,10 @@ bool SaveState::save(void* data, size_t& size)
   core->gpu2D[1].saveState(file);
   core->gpu3D.saveState(file);
   core->gpu3DRenderer.saveState(file);
+  core->hleArm7.saveState(file);
+  core->hleBios[0].saveState(file);
+  core->hleBios[1].saveState(file);
+  core->hleBios[2].saveState(file);
   core->interpreter[0].saveState(file);
   core->interpreter[1].saveState(file);
   core->ipc.saveState(file);
@@ -78,9 +79,6 @@ bool SaveState::load(const void* data, size_t& size)
 
   // Load the state of every component
   core->memory.loadState(file);
-  core->bios[0].loadState(file);
-  core->bios[1].loadState(file);
-  core->bios[2].loadState(file);
   core->cartridgeGba.loadState(file);
   core->cartridgeNds.loadState(file);
   core->cp15.loadState(file);
@@ -92,6 +90,10 @@ bool SaveState::load(const void* data, size_t& size)
   core->gpu2D[1].loadState(file);
   core->gpu3D.loadState(file);
   core->gpu3DRenderer.loadState(file);
+  core->hleArm7.loadState(file);
+  core->hleBios[0].loadState(file);
+  core->hleBios[1].loadState(file);
+  core->hleBios[2].loadState(file);
   core->interpreter[0].loadState(file);
   core->interpreter[1].loadState(file);
   core->ipc.loadState(file);
