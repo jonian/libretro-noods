@@ -1070,7 +1070,17 @@ bool retro_unserialize(const void* data, size_t size)
   SaveState saveState(core);
 
   if (!saveState.check(data, size))
+  {
+    struct retro_message_ext message {
+      .msg = "This save state is not compatible with the current core version.",
+      .duration = 300,
+      .level = RETRO_LOG_ERROR,
+      .target = RETRO_MESSAGE_TARGET_ALL,
+    };
+
+    envCallback(RETRO_ENVIRONMENT_SET_MESSAGE, &message);
     return false;
+  }
 
   return saveState.load(data, size);
 }
