@@ -307,7 +307,7 @@ static void initConfig()
     { "noods_gbaCrop", "Crop GBA Screen; enabled|disabled" },
     { "noods_screenFilter", "Screen Filter; Nearest|Upscaled|Linear" },
     { "noods_screenGhost", "Simulate Ghosting; disabled|enabled" },
-    { "noods_emulateAudio", "Emulate Audio; disabled|enabled" },
+    { "noods_emulateAudio", "Emulate Audio; enabled|disabled" },
     { "noods_audio16Bit", "Audio 16Bit; disabled|enabled" },
     { "noods_swapScreenMode", "Swap Screen Mode; Toggle|Hold" },
     { "noods_touchMode", "Touch Mode; Auto|Pointer|Joystick|None" },
@@ -341,7 +341,7 @@ static void updateConfig()
   Settings::highRes3D = fetchVariableBool("noods_highRes3D", false);
   Settings::screenFilter = fetchVariableEnum("noods_screenFilter", {"Nearest", "Upscaled", "Linear"});
   Settings::screenGhost = fetchVariableBool("noods_screenGhost", false);
-  Settings::emulateAudio = fetchVariableBool("noods_emulateAudio", false);
+  Settings::emulateAudio = fetchVariableBool("noods_emulateAudio", true);
   Settings::audio16Bit = fetchVariableBool("noods_audio16Bit", false);
 
   micInputMode = fetchVariable("noods_micInputMode", "Silence");
