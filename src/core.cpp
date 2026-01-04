@@ -184,6 +184,14 @@ void Core::loadState(MemFile &file) {
 }
 
 void Core::updateRun() {
+#ifdef __LIBRETRO__
+    if (gbaMode)
+        runFunc = &Interpreter::runCoreSingle<true, 0>;
+    else if (dsiMode)
+        runFunc = &Interpreter::runCoreDsi;
+    else
+        runFunc = &Interpreter::runCoreNds;
+#else
     // Set the run function based on active CPUs and core mode
     if (interpreter[0].halted && interpreter[1].halted)
         runFunc = &Interpreter::runCoreNone;
@@ -197,6 +205,7 @@ void Core::updateRun() {
         runFunc = &Interpreter::runCoreSingle<true, 1>;
     else
         runFunc = &Interpreter::runCoreSingle<false, 0>;
+#endif
     running.store(false);
 }
 
