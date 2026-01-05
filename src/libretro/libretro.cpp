@@ -308,7 +308,7 @@ static void initConfig()
     { "noods_screenFilter", "Screen Filter; Nearest|Upscaled|Linear" },
     { "noods_screenGhost", "Simulate Ghosting; disabled|enabled" },
     { "noods_emulateAudio", "Emulate Audio; enabled|disabled" },
-    { "noods_audio16Bit", "Audio 16Bit; disabled|enabled" },
+    { "noods_audio16Bit", "Audio 16Bit; enabled|disabled" },
     { "noods_swapScreenMode", "Swap Screen Mode; Toggle|Hold" },
     { "noods_touchMode", "Touch Mode; Auto|Pointer|Joystick|None" },
     { "noods_touchCursor", "Show Touch Cursor; enabled|disabled" },
@@ -342,7 +342,7 @@ static void updateConfig()
   Settings::screenFilter = fetchVariableEnum("noods_screenFilter", {"Nearest", "Upscaled", "Linear"});
   Settings::screenGhost = fetchVariableBool("noods_screenGhost", false);
   Settings::emulateAudio = fetchVariableBool("noods_emulateAudio", true);
-  Settings::audio16Bit = fetchVariableBool("noods_audio16Bit", false);
+  Settings::audio16Bit = fetchVariableBool("noods_audio16Bit", true);
 
   micInputMode = fetchVariable("noods_micInputMode", "Silence");
   micButtonMode = fetchVariable("noods_micButtonMode", "Toggle");
