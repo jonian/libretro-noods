@@ -208,7 +208,9 @@ void CartridgeNds::loadState(MemFile &file) {
 bool CartridgeNds::loadRom() {
     // Set the valid NDS save sizes
     if (saveSizes.empty()) {
+#ifndef __LIBRETRO__
         saveSizes.push_back(0x000000); // None
+#endif
         saveSizes.push_back(0x000200); // EEPROM 0.5KB
         saveSizes.push_back(0x002000); // EEPROM 8KB
         saveSizes.push_back(0x008000); // FRAM 32KB

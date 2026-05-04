@@ -682,15 +682,7 @@ static int getSaveFileDesc(std::string romPath)
   std::string path = savesPath + getNameFromPath(romPath) + ".sav";
   int fd = open(path.c_str(), O_RDWR);
   if (fd == -1)
-  {
-    std::ofstream file(path, std::ios::binary);
-    if (file.is_open())
-    {
-      file.put(0xFF);
-      file.close();
-    }
-    fd = open(path.c_str(), O_RDWR);
-  }
+    fd = open(path.c_str(), O_RDWR | O_CREAT, 0644);
   return fd;
 }
 
