@@ -43,9 +43,6 @@ static ScreenLayout touch;
 static std::string ndsPath;
 static std::string gbaPath;
 
-static int ndsSaveFd = -1;
-static int gbaSaveFd = -1;
-
 static std::vector<uint32_t> videoBuffer;
 static uint32_t videoBufferSize;
 
@@ -677,22 +674,9 @@ static void updateCursorState()
   }
 }
 
-static int getSaveFileDesc(std::string romPath)
+static std::string getSaveFilePath(std::string romPath)
 {
-  std::string path = savesPath + getNameFromPath(romPath) + ".sav";
-  int fd = open(path.c_str(), O_RDWR);
-  if (fd == -1)
-    fd = open(path.c_str(), O_RDWR | O_CREAT, 0644);
-  return fd;
-}
-
-static void closeSaveFileDesc()
-{
-  close(ndsSaveFd);
-  ndsSaveFd = -1;
-
-  close(gbaSaveFd);
-  gbaSaveFd = -1;
+  return savesPath + getNameFromPath(romPath) + ".sav";
 }
 
 static bool createCore(std::string ndsRom = "", std::string gbaRom = "")
@@ -701,18 +685,14 @@ static bool createCore(std::string ndsRom = "", std::string gbaRom = "")
   {
     if (core) delete core;
 
-    closeSaveFileDesc();
+    if (ndsRom != "") Settings::savePath = getSaveFilePath(ndsRom);
+    if (gbaRom != "") Settings::savePath = getSaveFilePath(gbaRom);
 
-    if (ndsRom != "") ndsSaveFd = getSaveFileDesc(ndsRom);
-    if (gbaRom != "") gbaSaveFd = getSaveFileDesc(gbaRom);
-
-    core = new Core(ndsRom, gbaRom, 0, -1, -1, ndsSaveFd, gbaSaveFd);
+    core = new Core(ndsRom, gbaRom);
     return true;
   }
   catch (CoreError e)
   {
-    closeSaveFileDesc();
-
     switch (e)
     {
       case ERROR_BIOS: logCallback(RETRO_LOG_INFO, "Error Loading BIOS"); break;
@@ -883,7 +863,6 @@ void retro_unload_game(void)
   }
 
   closeMicrophone();
-  closeSaveFileDesc();
 }
 
 void retro_reset(void)

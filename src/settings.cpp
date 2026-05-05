@@ -43,6 +43,7 @@ std::string Settings::firmwarePath = "firmware.bin";
 std::string Settings::gbaBiosPath = "gba_bios.bin";
 std::string Settings::sdImagePath = "sd.img";
 std::string Settings::basePath = ".";
+std::string Settings::savePath = "";
 
 std::vector<Setting> Settings::settings = {
     Setting("directBoot", &directBoot, false),

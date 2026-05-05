@@ -56,6 +56,7 @@ public:
     static std::string gbaBiosPath;
     static std::string sdImagePath;
     static std::string basePath;
+    static std::string savePath;
 
     static void add(std::vector<Setting> &settings);
     static bool load(std::string path = ".");

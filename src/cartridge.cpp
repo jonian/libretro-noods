@@ -51,6 +51,10 @@ bool Cartridge::setRom(std::string romPath, int romFd, int saveFd, int stateFd, 
     if (saveFd == -1) this->savePath = savePath; else this->saveFd = saveFd;
     (stateFd == -1) ? core->saveStates.setPath(statePath, gba) : core->saveStates.setFd(stateFd, gba);
     if (!gba) (cheatFd == -1) ? core->actionReplay.setPath(cheatPath) : core->actionReplay.setFd(cheatFd);
+#ifdef __LIBRETRO__
+    this->savePath = Settings::savePath;
+    this->saveFd = -1;
+#endif
     return loadRom();
 }
 
@@ -208,9 +212,7 @@ void CartridgeNds::loadState(MemFile &file) {
 bool CartridgeNds::loadRom() {
     // Set the valid NDS save sizes
     if (saveSizes.empty()) {
-#ifndef __LIBRETRO__
         saveSizes.push_back(0x000000); // None
-#endif
         saveSizes.push_back(0x000200); // EEPROM 0.5KB
         saveSizes.push_back(0x002000); // EEPROM 8KB
         saveSizes.push_back(0x008000); // FRAM 32KB
