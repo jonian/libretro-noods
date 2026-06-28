@@ -1,11 +1,7 @@
 #include <cstdarg>
 #include <algorithm>
 #include <cstring>
-#include <regex>
 #include <chrono>
-
-#include <fcntl.h>
-#include <fstream>
 #include <sstream>
 
 #include "libretro.h"
@@ -349,7 +345,7 @@ static void updateConfig()
   screenPosition = fetchVariableEnum("noods_screenPosition", {"Center", "Start", "End"});
 
   screenSwapMode = fetchVariable("noods_swapScreenMode", "Toggle");
-  touchMode = fetchVariable("noods_touchMode", "Touch");
+  touchMode = fetchVariable("noods_touchMode", "Auto");
   showTouchCursor = fetchVariableBool("noods_touchCursor", true);
   cursorTimeout = fetchVariableInt("noods_cursorTimeout", 3);
 
@@ -468,36 +464,25 @@ static void updateScreenState()
   renderBotScreen = !renderGbaScreen && (!singleScreen || screenSizing == 2);
 }
 
-static void drawCursor(uint32_t *data, int32_t pointX, int32_t pointY, int32_t size = 2)
+static void drawCursor(uint32_t *dst, int x, int y, int dx, int dy, int dw, int dh, int stride, int scale = 1, int size = 2)
 {
-  bool shift = Settings::highRes3D || Settings::screenFilter == 1;
-  auto scale = layout.botWidth / 256;
+  int posX = clampValue(x, size, (dw / scale) - size);
+  int posY = clampValue(y, size, (dh / scale) - size);
 
-  uint32_t posX = clampValue(pointX, size, (layout.botWidth / scale) - size);
-  uint32_t posY = clampValue(pointY, size, (layout.botHeight / scale) - size);
+  int curX = dx + (posX * scale);
+  int curY = dy + (posY * scale);
 
-  uint32_t minX = layout.botX << shift;
-  uint32_t maxX = layout.minWidth << shift;
+  int startY = curY - (size * scale);
+  int endY = curY + (size * scale);
 
-  uint32_t minY = layout.botY << shift;
-  uint32_t maxY = layout.minHeight << shift;
+  int startX = curX - (size * scale);
+  int endX = curX + (size * scale);
 
-  uint32_t curX = (layout.botX + (posX * scale)) << shift;
-  uint32_t curY = (layout.botY + (posY * scale)) << shift;
-
-  uint32_t cursorSize = (size * scale) << shift;
-
-  uint32_t startY = clampValue(curY - cursorSize, minY, maxY);
-  uint32_t endY = clampValue(curY + cursorSize, minY, maxY);
-
-  uint32_t startX = clampValue(curX - cursorSize, minX, maxX);
-  uint32_t endX = clampValue(curX + cursorSize, minX, maxX);
-
-  for (uint32_t y = startY; y < endY; y++)
+  for (int py = startY; py < endY; py++)
   {
-    for (uint32_t x = startX; x < endX; x++)
+    for (int px = startX; px < endX; px++)
     {
-      uint32_t& pixel = data[(y * maxX) + x];
+      uint32_t& pixel = dst[(py * stride) + px];
       pixel = (0xFFFFFF - pixel) | 0xFF000000;
     }
   }
@@ -510,13 +495,22 @@ static void copyScreen(uint32_t *src, uint32_t *dst, int sw, int sh, int dx, int
 
   if ((scaleX >= 1 && scaleY >= 1) && (scaleX > 1 || scaleY > 1))
   {
-    for (int y = 0; y < dh; ++y)
-    {
-      int srcY = (y / scaleY) * sw;
-      int dstY = (dy + y) * stride + dx;
+    int rowBytes = dw * sizeof(uint32_t);
 
-      for (int x = 0; x < dw; ++x)
-        dst[dstY + x] = src[srcY + (x / scaleX)];
+    for (int y = 0; y < sh; ++y)
+    {
+      uint32_t *srcRow = src + y * sw;
+      uint32_t *dstRow = dst + (dy + y * scaleY) * stride + dx;
+      uint32_t *newRow = dstRow;
+
+      for (int x = 0; x < sw; ++x)
+      {
+        for (int cx = 0; cx < scaleX; ++cx)
+          *newRow++ = srcRow[x];
+      }
+
+      for (int cy = 1; cy < scaleY; ++cy)
+        memcpy(dstRow + cy * stride, dstRow, rowBytes);
     }
   }
   else if (dx == 0 && dw == stride)
@@ -582,7 +576,14 @@ static void renderVideo()
     );
 
     if (showTouchCursor && cursorVisible)
-      drawCursor(videoBuffer.data(), touchX, touchY);
+    {
+      drawCursor(
+        videoBuffer.data(), touchX, touchY,
+        layout.botX << shift, layout.botY << shift,
+        layout.botWidth << shift, layout.botHeight << shift,
+        layout.minWidth << shift, (layout.botWidth / 256) << shift
+      );
+    }
   }
 
   videoCallback(videoBuffer.data(), width, height, width * 4);
@@ -867,6 +868,12 @@ void retro_unload_game(void)
 
 void retro_reset(void)
 {
+  if (core)
+  {
+    core->cartridgeNds.writeSave();
+    core->cartridgeGba.writeSave();
+  }
+
   createCore(ndsPath, gbaPath);
 }
 
@@ -1049,7 +1056,7 @@ bool retro_unserialize(const void* data, size_t size)
       .target = RETRO_MESSAGE_TARGET_ALL,
     };
 
-    envCallback(RETRO_ENVIRONMENT_SET_MESSAGE, &message);
+    envCallback(RETRO_ENVIRONMENT_SET_MESSAGE_EXT, &message);
     return false;
   }
 
