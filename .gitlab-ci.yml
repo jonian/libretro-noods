@@ -51,6 +51,10 @@ include:
   - project: 'libretro-infrastructure/ci-templates'
     file: '/ios9.yml'
 
+  # webOS 32-bit (LGTV)
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/webos-make.yml'
+
   ################################## CONSOLES ################################
   # Nintendo WiiU
   - project: 'libretro-infrastructure/ci-templates'
@@ -148,6 +152,12 @@ libretro-build-ios-arm64:
 libretro-build-ios9:
   extends:
     - .libretro-ios9-make-default
+    - .core-defs
+
+# webOS 32-bit
+libretro-build-webos-armv7a:
+  extends:
+    - .libretro-webos-armv7a-make-default
     - .core-defs
 
 # tvOS
